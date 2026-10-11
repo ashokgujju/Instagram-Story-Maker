@@ -53,4 +53,12 @@
 
     <string name="share_title">Ready to share</string>
     <string name="share_to_stories">Share to Instagram Stories</string>
+    <string name="share_saving">Saving…</string>
+    <string name="share_saved">Saved</string>
+    <string name="share_discard_title">Discard this photo?</string>
+    <string name="share_discard_body">It hasn\'t been saved to your gallery.</string>
+    <string name="share_discard_keep">Keep photo</string>
+    <string name="message_saved_to_gallery">Saved to gallery</string>
+    <string name="message_save_photo_failed">Couldn\'t save the photo</string>
+    <string name="message_storage_permission">Allow storage access to save photos</string>
 </resources>

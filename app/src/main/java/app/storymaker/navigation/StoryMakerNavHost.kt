@@ -126,9 +126,17 @@ fun StoryMakerNavHost(
                 )
             }
             composable<ShareRoute> {
+                val photoNotRestoredMessage = stringResource(R.string.message_photo_not_restored)
                 ShareScreen(
                     onBack = { navController.popBackStack() },
-                    onNewPhoto = { navController.popBackStack<CaptureRoute>(inclusive = false) },
+                    onDiscarded = { navController.popBackStack<CaptureRoute>(inclusive = false) },
+                    onPhotoUnavailable = {
+                        navController.navigate(CaptureRoute) {
+                            popUpTo<CaptureRoute> { inclusive = true }
+                        }
+                        showMessage(photoNotRestoredMessage)
+                    },
+                    onMessage = showMessage,
                 )
             }
         }

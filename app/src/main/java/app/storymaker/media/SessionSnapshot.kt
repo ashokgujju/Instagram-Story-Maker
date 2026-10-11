@@ -47,3 +47,6 @@ data class SessionSnapshot(
         }
     }
 }
+
+/** Whether the current edits are already in the gallery (Save shows "Saved" and is disabled). */
+val SessionSnapshot.isSavedToGallery: Boolean get() = exportedRevision == revision

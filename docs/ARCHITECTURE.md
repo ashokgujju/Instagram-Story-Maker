@@ -350,7 +350,8 @@ The stickers in the handoff mockups are **placeholders**. The shipped set is the
 
 - Runs off the main thread.
 - Decodes the normalized capture (no rotation or mirroring needed, D10) at the size of the render target (D4): long side ≤ 1920px for share, full resolution capped at 4096px for gallery. Use `inSampleSize` decoding plus a final scale.
-- Replays all layers onto the bitmap in order.
+- Replays all layers onto the bitmap in order (`media/ImageExporter.kt`), using the same geometry as the editor so the output matches the screen exactly: strokes via `smoothStroke` + `strokePath(...).asAndroidPath()` (anti-aliased, round caps/joins, width = fraction × bitmap width, single points as dots); stickers via `stickerFrame`, drawn from their VectorDrawables with bounds set to the exact output size, so they are rasterized sharp at any resolution.
+- JPEG quality: 90 for the share target, 95 for the gallery target. Re-encoding writes no EXIF.
 - On `OutOfMemoryError`, retry once at half the target size; if that also fails, show an error. Never crash.
 
 ### Save to gallery (export)
@@ -359,12 +360,13 @@ The stickers in the handoff mockups are **placeholders**. The shipped set is the
 - Contains photo, drawings, and stickers. Does not contain the caption (D6). Saved as JPEG under `Pictures/StoryMaker`.
 - **API 29+:** insert into MediaStore with `RELATIVE_PATH = Pictures/StoryMaker` using the pending-file pattern (`IS_PENDING` = 1, write, then 0). No storage permission.
 - **API 26–28:** `RELATIVE_PATH` and `IS_PENDING` do not exist. Declare `WRITE_EXTERNAL_STORAGE` with `maxSdkVersion="28"` and request it at save time. Write the file to the public `Pictures/StoryMaker` directory, then register it with `MediaScannerConnection.scanFile` so it appears in the gallery.
-- On success, set `exportedRevision = revision` in the session and show a brief "Saved to gallery" snackbar. Save shows a "Saved" state and stays disabled until the layers change, to avoid duplicate gallery images.
+- On success, set `exportedRevision = revision` in the session and show a brief "Saved to gallery" snackbar. The Save button has three states: **Save** (download icon), **Saving…** (disabled), **Saved** (check icon, disabled while `exportedRevision == revision`, i.e. until the layers change), to avoid duplicate gallery images. On failure: "Couldn't save the photo". On API 26–28, a denied storage permission shows "Allow storage access to save photos".
+- Files are named `StoryMaker_yyyyMMdd_HHmmss.jpg`. A failed MediaStore write deletes its pending row.
 
 ### Discard
 
 - Triggered by Back from the Editor (D12, section 8). Confirmation dialog ("Discard photo?", Discard / Keep editing), then delete the session folder, clear the active session pointer, and return to Capture.
-- "New photo" on the Share screen does the same, confirming only if the current edits haven't been saved or shared.
+- "New photo" on the Share screen does the same, confirming ("Discard this photo?") only if the photo hasn't been saved to the gallery. Milestone 8 extends this to "…or shared" once `sharedAt` exists.
 - Share files in `cache/share/` are **not** deleted on discard or "New photo"; Instagram may still be reading them. Only the age-based cleanup removes them.
 
 ### File locations
@@ -403,7 +405,7 @@ Abandoning the active session on a fresh launch is handled separately in `MainAc
 ### Share screen (`Share`)
 
 - Top bar: Back, the title "Ready to share", and a **New photo** icon button on the right.
-- Large 9:16 preview: the share render (photo + layers) with, when "Show on photo" is on and the caption is not empty, the **actual caption sticker PNG from the renderer** drawn centered at the scale Instagram will initially show it, plus a small "You can move it in Instagram" hint. Never imitate the sticker with Compose text.
+- Large 9:16 preview: the share render (photo + layers, rendered by the exporter when the screen opens, so it matches the saved and shared image) with, when "Show on photo" is on and the caption is not empty, the **actual caption sticker PNG from the renderer** drawn centered at the scale Instagram will initially show it, plus a small "You can move it in Instagram" hint. Never imitate the sticker with Compose text.
 - **Share to Instagram Stories** (accent pill, full width), or **Get Instagram** when Instagram is unavailable (section 15).
 - **Save** (secondary pill, full width since "More" is removed): gallery export (section 13).
 - The share background is pre-rendered when the screen opens, so tapping Share only renders the small caption sticker.
@@ -526,7 +528,7 @@ Tests are written in the milestone that introduces the code under test (section 
 - **Unit tests (JVM):** editor reducer (add/remove layers, transforms, undo/redo, 50-entry cap), normalized coordinate mapping and brush-size conversion, snapshot serialization round-trip and version handling, `SessionStore` (serialized writes, write failure keeps state, restore-failure paths), cleanup rules, caption text normalization, sticker search/category filtering, edge color sampling, `StoryShareRequest` construction (action, package, extras, URIs, sticker/clipboard switch combinations), permission state transitions.
 - **Robolectric tests:** `StoryShareRequest` → `Intent` mapping (flags, grants), photo normalization pixel output with EXIF fixtures (all eight orientations, mirrored front-camera samples; added in milestone 9; milestone 2 covers the transform logic on the JVM and the pixels on a real device).
 - **Screenshot tests (Roborazzi + Robolectric native graphics):** every screen in its main states, compared visually against the handoff PNGs during review; image exporter output with fixed layers; caption sticker with short, long, max-length, emoji-only, multi-line, and RTL captions.
-- **Instrumented tests:** camera flow with the CameraX test camera (milestone 9); FileProvider URIs readable from another app; gallery export on API 26–28 (legacy path) and 29+ (MediaStore).
+- **Instrumented tests:** camera flow with the CameraX test camera (milestone 9); FileProvider URIs readable from another app; gallery export on API 26–28 (legacy path) and 29+ (MediaStore). `GallerySaverTest` (API 29+ path) runs on the test phone; the API 26–28 path is not yet verified on a device.
 - **Manual QA matrix:** Instagram installed vs. missing, logged in vs. out, old Instagram version, front vs. back camera (preview matches result), landscape capture, empty caption, each combination of the two caption switches, Android 12 vs. 13+ clipboard behavior, permission denied once / permanently / "Only this time", process death round-trip ("Don't keep activities"), swipe-away fresh launch, low storage, API 26, and a recent API level.
 
 ---
@@ -542,7 +544,7 @@ Implement one milestone at a time. Each must build, include and pass its own tes
 | 3 | Stickers | Outlined Figma set extracted to 40 VectorDrawables by `tools/stickers/extract_stickers.py`; catalog with stable IDs, categories, and tags; repository and filtering |
 | 4 | Editor drawing | Editor layout and Draw tab per design; layer model, reducer, freehand drawing, swatches, brush slider, undo/redo with cap, edits persisted through `SessionStore` and surviving process death; Back → discard confirmation |
 | 5 | Editor stickers | Stickers tab with the two-position sheet, search, category chips, grid; place, select, move, pinch, rotate, ✕ remove, and resize/rotate handle; one undo step per gesture |
-| 6 | Rendering and save | Image exporter (share and gallery targets, OOM fallback); gallery save on API 26–28 and 29+; `exportedRevision` disables duplicate saves (wired to a Save button on the Share screen) |
+| 6 | Rendering and save | Image exporter (share and gallery targets, OOM fallback) matching the editor; gallery save on API 26–28 and 29+; `exportedRevision` disables duplicate saves; Share screen shows the exporter's preview with Save and New photo |
 | 7 | Caption and Share screens | Caption screen per design with counter and switches; caption sticker renderer meeting the spec; Share screen with accurate centered preview, Save, and New photo; screenshot tests set up |
 | 8 | Instagram share | Stories opens directly with background, edge colors, and caption sticker per the switches; clipboard per the switch; `sharedAt`; availability check and Get Instagram fallback; sticker size tuned on device |
 | 9 | Edge cases and polish | All rows in section 18 handled; cleanup at app start; coach mark; accessibility checklist (section 17) met; Robolectric normalization pixel tests and the instrumented camera test (section 20) |
