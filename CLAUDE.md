@@ -58,7 +58,7 @@ Use the Gradle wrapper from the repo root:
 - **Toolchain**: Gradle 9.6 wrapper; the Gradle daemon JVM is pinned to Java 25 (`gradle/gradle-daemon-jvm.properties`, auto-provisioned via the foojay resolver).
 - **BuildConfig** generation is off by default in AGP 9; enable it with `buildFeatures { buildConfig = true }` when adding the App ID field.
 - **Configuration cache** is enabled in `gradle.properties`, so build logic must be configuration-cache compatible (e.g. read `local.properties` / env vars through the `providers` API).
-- **R8**: release builds use the AGP 9 `optimization { }` block (scoped to `androidx.**`, `kotlin.**`, `kotlinx.**`). Keep rules go in `app/src/main/keepRules/` (all files there are combined), not a `proguard-rules.pro`.
+- **R8**: release builds use the AGP 9 `optimization { }` block over the whole app. Don't reintroduce the template's `packageScope` (limiting R8 to `androidx.**`/`kotlin.**`/`kotlinx.**`): it made release builds crash on launch with an `IllegalAccessError`. Keep rules go in `app/src/main/keepRules/` (all files there are combined), not a `proguard-rules.pro`. To test a release build locally, pass `-Pfacebook.appId=…` and sign the APK with the debug key.
 - Repositories are centrally declared in `settings.gradle.kts` with `FAIL_ON_PROJECT_REPOS`; don't add `repositories {}` in module build files.
 
 ## Theming
