@@ -12,9 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +45,7 @@ import app.storymaker.media.StickerLayer
 import app.storymaker.stickers.StickerCatalog
 import app.storymaker.ui.components.PrimaryButton
 import app.storymaker.ui.components.RoundIconButton
+import app.storymaker.ui.components.StoryDialog
 import app.storymaker.ui.components.StoryScreen
 import app.storymaker.ui.theme.StoryMakerTheme
 import kotlin.math.roundToInt
@@ -118,21 +116,16 @@ fun EditorScreen(
     )
 
     if (confirmDiscard) {
-        AlertDialog(
+        StoryDialog(
+            title = stringResource(R.string.editor_discard_title),
+            body = listOf(stringResource(R.string.editor_discard_body)),
+            confirmText = stringResource(R.string.editor_discard_confirm),
+            onConfirm = {
+                confirmDiscard = false
+                viewModel.discard()
+            },
+            dismissText = stringResource(R.string.editor_discard_keep),
             onDismissRequest = { confirmDiscard = false },
-            title = { Text(stringResource(R.string.editor_discard_title)) },
-            text = { Text(stringResource(R.string.editor_discard_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDiscard = false
-                    viewModel.discard()
-                }) { Text(stringResource(R.string.editor_discard_confirm)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDiscard = false }) {
-                    Text(stringResource(R.string.editor_discard_keep))
-                }
-            },
         )
     }
 }
@@ -205,6 +198,7 @@ internal fun EditorContent(uiState: EditorUiState, actions: EditorActions) {
                 brushSizeDp = uiState.brushSizeDp,
                 stickerPainters = rememberStickerPainters(uiState),
                 selectedLayerId = uiState.selectedLayerId,
+                selectedStickerName = selectedStickerName(uiState),
                 onStrokeFinished = actions.onStrokeFinished,
                 onSelectLayer = actions.onSelectLayer,
                 onStickerChanged = actions.onStickerChanged,
@@ -275,6 +269,14 @@ private fun BoxScope.StickerSheetHost(
             onSearchFocused = { scope.launch { offset.animateTo(0f) } },
         )
     }
+}
+
+/** Display name of the selected sticker, for screen readers. */
+@Composable
+private fun selectedStickerName(uiState: EditorUiState): String? {
+    val layer = uiState.layers.firstOrNull { it.id == uiState.selectedLayerId } as? StickerLayer ?: return null
+    val sticker = uiState.stickers.firstOrNull { it.id == layer.stickerId } ?: return null
+    return stringResource(sticker.name)
 }
 
 /** Artwork for the stickers placed in the current layers. */

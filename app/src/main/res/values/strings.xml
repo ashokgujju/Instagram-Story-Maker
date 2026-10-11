@@ -37,6 +37,12 @@
     <string name="editor_tab_stickers">Stickers</string>
     <string name="editor_brush_size">Brush size</string>
     <string name="editor_back_to_drawing">Back to drawing</string>
+    <string name="editor_canvas">Photo</string>
+    <string name="editor_canvas_selected">Photo, %1$s sticker selected</string>
+    <string name="editor_sticker_bigger">Make sticker bigger</string>
+    <string name="editor_sticker_smaller">Make sticker smaller</string>
+    <string name="editor_sticker_rotate_left">Rotate sticker left</string>
+    <string name="editor_sticker_rotate_right">Rotate sticker right</string>
     <string name="editor_discard_title">Discard photo?</string>
     <string name="editor_discard_body">Your drawing will be lost.</string>
     <string name="editor_discard_confirm">Discard</string>
@@ -63,6 +69,10 @@
     <string name="share_title">Ready to share</string>
     <string name="share_to_stories">Share to Instagram Stories</string>
     <string name="share_again">Share again</string>
+    <string name="coach_title">Before you share</string>
+    <string name="coach_move_sticker">Your caption is a sticker: drag, pinch or rotate it in Instagram.</string>
+    <string name="coach_paste_caption">Your caption is copied: long-press in Instagram to paste it as text.</string>
+    <string name="coach_got_it">Got it</string>
     <string name="share_preparing">Preparing…</string>
     <string name="share_get_instagram">Get Instagram</string>
     <string name="message_instagram_not_installed">Instagram isn\'t installed</string>

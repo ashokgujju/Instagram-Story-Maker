@@ -65,6 +65,8 @@ data class ShareUiState(
     val saveState: SaveState = SaveState.Idle,
     val shareButton: ShareButtonState = ShareButtonState.Ready,
     val shared: Boolean = false,
+    /** The first-share coach mark, shown before Instagram opens; null when hidden. */
+    val coachMark: List<CoachMarkLine>? = null,
 ) {
     /** Leaving would lose a photo that was neither saved nor shared, so ask first. */
     val needsDiscardConfirmation: Boolean get() = needsDiscardConfirmation(saved = saveState == SaveState.Saved, shared = shared)
@@ -96,6 +98,7 @@ private data class Flags(
     val saving: Boolean = false,
     val preparingShare: Boolean = false,
     val instagramAvailable: Boolean = true,
+    val coachMark: List<CoachMarkLine>? = null,
 )
 
 @HiltViewModel
@@ -107,6 +110,7 @@ class ShareViewModel @Inject constructor(
     private val gallerySaver: GallerySaver,
     private val captionRenderer: CaptionRenderer,
     private val shareFiles: ShareFiles,
+    private val coachMarkStore: CoachMarkStore,
 ) : ViewModel() {
 
     // Navigation stores route properties under their names (ShareRoute.sessionId).
@@ -139,6 +143,7 @@ class ShareViewModel @Inject constructor(
                 else -> ShareButtonState.Ready
             },
             shared = shared,
+            coachMark = flags.coachMark,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ShareUiState())
 
@@ -194,6 +199,17 @@ class ShareViewModel @Inject constructor(
             viewModelScope.launch { _events.send(ShareEvent.MissingFacebookAppId) }
             return
         }
+        // First share ever: explain the caption sticker and clipboard before Instagram opens.
+        if (!coachMarkStore.seen) {
+            val lines = coachMarkLines(
+                stickerShown = current.captionSticker != null,
+                captionCopied = session.copyToClipboard && normalizeCaption(session.caption).isNotEmpty(),
+            )
+            if (lines.isNotEmpty()) {
+                flags.update { it.copy(coachMark = lines) }
+                return
+            }
+        }
         val sticker = current.captionSticker?.image?.asAndroidBitmap()
         flags.update { it.copy(preparingShare = true) }
         viewModelScope.launch {
@@ -222,6 +238,18 @@ class ShareViewModel @Inject constructor(
                 flags.update { it.copy(preparingShare = false) }
             }
         }
+    }
+
+    /** "Got it" on the coach mark: never show it again, and continue the share. */
+    fun confirmCoachMark() {
+        coachMarkStore.markSeen()
+        flags.update { it.copy(coachMark = null) }
+        share()
+    }
+
+    /** Coach mark dismissed without "Got it": no share; it shows again next time. */
+    fun dismissCoachMark() {
+        flags.update { it.copy(coachMark = null) }
     }
 
     /** Instagram opened: record the share (we can't know whether the user posts). */

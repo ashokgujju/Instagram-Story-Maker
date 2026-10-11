@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
@@ -34,6 +35,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.storymaker.R
@@ -109,6 +111,7 @@ fun BrushSwatches(selectedColor: Int, onSelect: (Int) -> Unit, modifier: Modifie
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .extendHorizontally(SWATCH_ROW_OVERHANG)
             .selectableGroup(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -182,5 +185,18 @@ fun BrushSizeSlider(sizeDp: Float, onSizeChange: (Float) -> Unit, modifier: Modi
     }
 }
 
+/**
+ * Lets the swatch row reach [overhang] into the screen's side padding on each side, so seven
+ * swatches get 48dp touch targets even on 360dp-wide phones.
+ */
+private fun Modifier.extendHorizontally(overhang: Dp) = layout { measurable, constraints ->
+    val extra = (overhang * 2).roundToPx()
+    val placeable = measurable.measure(
+        constraints.copy(minWidth = constraints.minWidth + extra, maxWidth = constraints.maxWidth + extra),
+    )
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-extra / 2, 0) }
+}
+
+private val SWATCH_ROW_OVERHANG = 4.dp
 private val BlackSwatchBorder = Color(0xFF4A4A4A)
 private val InactiveTrack = Color(0xFF3A3A3A)

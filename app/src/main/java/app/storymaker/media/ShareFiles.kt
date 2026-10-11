@@ -46,10 +46,21 @@ class ShareFiles internal constructor(
         SharedImages(background, sticker)
     }
 
+    /**
+     * Deletes share files older than [maxAgeMillis], judged by modification time only, so files
+     * written moments ago (a share in progress, or one Instagram is still reading) are never touched.
+     */
+    suspend fun cleanUp(nowMillis: Long = System.currentTimeMillis(), maxAgeMillis: Long = MAX_AGE_MILLIS) = withContext(io) {
+        directory.listFiles()?.filter { it.isFile && nowMillis - it.lastModified() > maxAgeMillis }?.forEach { it.delete() }
+    }
+
     private fun randomSuffix() = UUID.randomUUID().toString().take(8)
 
     companion object {
         /** Must match `res/xml/share_paths.xml`. */
         const val SHARE_DIRECTORY = "share"
+
+        /** Share files are kept a day; Instagram has long finished reading them by then. */
+        const val MAX_AGE_MILLIS = 24 * 60 * 60 * 1000L
     }
 }

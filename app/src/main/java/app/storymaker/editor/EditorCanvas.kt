@@ -48,7 +48,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
@@ -81,6 +83,7 @@ import kotlin.math.roundToInt
  *   gesture is reported once through [onStickerChanged].
  *
  * @param stickerPainters artwork for the sticker IDs used in [layers]
+ * @param selectedStickerName display name of the selected sticker, announced by screen readers
  */
 @Composable
 fun EditorCanvas(
@@ -91,6 +94,7 @@ fun EditorCanvas(
     brushSizeDp: Float,
     stickerPainters: Map<String, Painter>,
     selectedLayerId: String?,
+    selectedStickerName: String?,
     onStrokeFinished: (points: List<Float>, widthFraction: Float) -> Unit,
     onSelectLayer: (String?) -> Unit,
     onStickerChanged: (before: StickerLayer, after: StickerLayer) -> Unit,
@@ -131,7 +135,48 @@ fun EditorCanvas(
         return frameOf(shown, rect)
     }
 
-    Box(modifier = modifier.onSizeChanged { size = it }) {
+    val canvasDescription = if (selectedSticker != null && selectedStickerName != null) {
+        stringResource(R.string.editor_canvas_selected, selectedStickerName)
+    } else {
+        stringResource(R.string.editor_canvas)
+    }
+    val biggerLabel = stringResource(R.string.editor_sticker_bigger)
+    val smallerLabel = stringResource(R.string.editor_sticker_smaller)
+    val rotateLeftLabel = stringResource(R.string.editor_sticker_rotate_left)
+    val rotateRightLabel = stringResource(R.string.editor_sticker_rotate_right)
+    val removeLabel = stringResource(R.string.sticker_remove)
+
+    Box(
+        modifier = modifier
+            .onSizeChanged { size = it }
+            .semantics {
+                contentDescription = canvasDescription
+                // Non-gesture alternatives to pinch, twist, and the handle for screen reader users.
+                if (selectedSticker != null && rect != null) {
+                    fun change(zoom: Float, rotation: Float) = CustomAccessibilityAction(
+                        label = when {
+                            zoom > 1f -> biggerLabel
+                            zoom < 1f -> smallerLabel
+                            rotation < 0f -> rotateLeftLabel
+                            else -> rotateRightLabel
+                        },
+                    ) {
+                        onStickerChanged(selectedSticker, selectedSticker.transformed(Offset.Zero, zoom, rotation, rect))
+                        true
+                    }
+                    customActions = listOf(
+                        change(zoom = ACCESSIBILITY_ZOOM_STEP, rotation = 0f),
+                        change(zoom = 1f / ACCESSIBILITY_ZOOM_STEP, rotation = 0f),
+                        change(zoom = 1f, rotation = -ACCESSIBILITY_ROTATION_STEP),
+                        change(zoom = 1f, rotation = ACCESSIBILITY_ROTATION_STEP),
+                        CustomAccessibilityAction(removeLabel) {
+                            onRemoveSticker(selectedSticker.id)
+                            true
+                        },
+                    )
+                }
+            },
+    ) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -339,6 +384,8 @@ private fun MutableList<Float>.addPoint(position: Offset, rect: PhotoRect) {
     add(rect.toNormalizedY(position.y))
 }
 
+private const val ACCESSIBILITY_ZOOM_STEP = 1.25f
+private const val ACCESSIBILITY_ROTATION_STEP = 15f
 private val MIN_POINT_DISTANCE = 1.5.dp
 private val CORNER_RADIUS = 20.dp
 private val HANDLE_TOUCH_SIZE = 48.dp

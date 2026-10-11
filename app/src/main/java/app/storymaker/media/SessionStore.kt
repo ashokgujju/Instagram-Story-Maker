@@ -167,6 +167,16 @@ class SessionStore @Inject constructor(
         withContext(io) { deleteActiveSessionFiles() }
     }
 
+    /** Deletes session folders left behind by crashes or interrupted flows: everything except the active session. */
+    suspend fun cleanUpOrphans() = lock.withLock {
+        withContext(io) {
+            val active = readActiveId()
+            files.sessionsDir.listFiles()
+                ?.filter { it.isDirectory && it.name != active }
+                ?.forEach { it.deleteRecursively() }
+        }
+    }
+
     private fun scheduleSave() = synchronized(saveJobLock) {
         saveJob?.cancel()
         saveJob = scope.launch {

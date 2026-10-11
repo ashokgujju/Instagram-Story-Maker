@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -20,6 +23,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import app.storymaker.R
@@ -30,6 +34,8 @@ import app.storymaker.camera.PermissionScreen
 import app.storymaker.editor.EditorScreen
 import app.storymaker.media.SessionError
 import app.storymaker.share.ShareScreen
+import app.storymaker.ui.theme.OnBackground
+import app.storymaker.ui.theme.SurfaceHigh
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
@@ -148,13 +154,23 @@ fun StoryMakerNavHost(
                 )
             }
         }
+        // On Capture, keep messages above the shutter row.
+        val backStackEntry by navController.currentBackStackEntryAsState()
+        val onCapture = backStackEntry?.destination?.hasRoute<CaptureRoute>() == true
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(16.dp),
-        )
+                .padding(start = 16.dp, end = 16.dp, bottom = if (onCapture) 136.dp else 16.dp),
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = SurfaceHigh,
+                contentColor = OnBackground,
+                shape = MaterialTheme.shapes.medium,
+            )
+        }
     }
 }
 

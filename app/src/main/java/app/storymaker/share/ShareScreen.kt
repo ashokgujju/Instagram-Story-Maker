@@ -12,11 +12,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +38,7 @@ import app.storymaker.R
 import app.storymaker.ui.components.AccentButton
 import app.storymaker.ui.components.RoundIconButton
 import app.storymaker.ui.components.SecondaryButton
+import app.storymaker.ui.components.StoryDialog
 import app.storymaker.ui.components.StoryScreen
 import app.storymaker.ui.components.StoryTopBar
 import app.storymaker.ui.theme.Muted
@@ -126,22 +125,34 @@ fun ShareScreen(
         onSave = onSave,
     )
 
+    uiState.coachMark?.let { lines ->
+        StoryDialog(
+            title = stringResource(R.string.coach_title),
+            body = lines.map {
+                stringResource(
+                    when (it) {
+                        CoachMarkLine.MoveSticker -> R.string.coach_move_sticker
+                        CoachMarkLine.PasteCaption -> R.string.coach_paste_caption
+                    },
+                )
+            },
+            confirmText = stringResource(R.string.coach_got_it),
+            onConfirm = viewModel::confirmCoachMark,
+            onDismissRequest = viewModel::dismissCoachMark,
+        )
+    }
+
     if (confirmDiscard) {
-        AlertDialog(
+        StoryDialog(
+            title = stringResource(R.string.share_discard_title),
+            body = listOf(stringResource(R.string.share_discard_body)),
+            confirmText = stringResource(R.string.editor_discard_confirm),
+            onConfirm = {
+                confirmDiscard = false
+                viewModel.discard()
+            },
+            dismissText = stringResource(R.string.share_discard_keep),
             onDismissRequest = { confirmDiscard = false },
-            title = { Text(stringResource(R.string.share_discard_title)) },
-            text = { Text(stringResource(R.string.share_discard_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDiscard = false
-                    viewModel.discard()
-                }) { Text(stringResource(R.string.editor_discard_confirm)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDiscard = false }) {
-                    Text(stringResource(R.string.share_discard_keep))
-                }
-            },
         )
     }
 }

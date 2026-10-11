@@ -8,6 +8,8 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,9 +38,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -114,7 +119,7 @@ fun StickerSheet(
             onFocused = onSearchFocused,
             onDone = { focusManager.clearFocus() },
         )
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(7.dp))
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -124,7 +129,7 @@ fun StickerSheet(
                 CategoryChip(entry.label, selected = category == entry) { category = entry }
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(7.dp))
         if (visible.isEmpty()) {
             Text(
                 text = stringResource(R.string.sticker_none_found),
@@ -180,7 +185,7 @@ private fun SearchField(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp)
+                    .height(48.dp)
                     .background(SurfaceHighest, RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -202,14 +207,28 @@ private fun SearchField(
     )
 }
 
+/** The design's 34dp chip, with a 48dp touch area around it. */
 @Composable
 private fun CategoryChip(@StringRes label: Int, selected: Boolean, onClick: () -> Unit) {
+    val interactions = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .selectable(selected = selected, role = Role.Tab, interactionSource = interactions, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        ChipBody(label, selected, interactions)
+    }
+}
+
+@Composable
+private fun ChipBody(@StringRes label: Int, selected: Boolean, interactions: MutableInteractionSource) {
     Box(
         modifier = Modifier
             .height(34.dp)
             .clip(CircleShape)
             .background(if (selected) PrimaryButtonContainer else SurfaceHighest)
-            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .indication(interactions, ripple())
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {

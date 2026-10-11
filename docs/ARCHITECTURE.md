@@ -126,6 +126,7 @@ The handoff (`docs/design/`) is the visual target. 1 CSS px in the mockups ≈ 1
 - Spacing: side padding 16 (24 on permission screens); 16 between sections.
 - Touch targets: **48dp minimum** (mockups use 44px; round up).
 - Status and navigation bars are transparent with light icons; screens handle insets (edge-to-edge).
+- Dialogs use the shared `StoryDialog` (`#1F1F1F` surface, 20/700 title, 16sp body lines, text buttons). Snackbars are dark (`#1F1F1F` with white text, 16dp corners) and sit above the shutter row on the Capture screen.
 
 ### Screens
 
@@ -380,10 +381,10 @@ The stickers in the handoff mockups are **placeholders**. The shipped set is the
 
 ### Cleanup
 
-Runs once at app start, off the main thread:
+Runs once at app start, off the main thread (`media/StartupCleanup.kt`, started from `StoryMakerApp.onCreate`):
 
 - `cache/share/`: delete files older than ~24 hours, judged by file modification time only. Files written moments ago are never touched, so cleanup cannot race with a share in progress.
-- `sessions/`: delete every session folder except the one named in `active_session`.
+- `sessions/`: delete every session folder except the one named in `active_session` (`SessionStore.cleanUpOrphans`, under the store's lock so it cannot race with a new capture).
 
 Abandoning the active session on a fresh launch is handled separately in `MainActivity` (section 9).
 
@@ -471,16 +472,17 @@ If the Facebook App ID is empty (debug builds without `facebook.appId`), Share s
 
 - Copy only at share time, only when "Copy to clipboard" is on and the caption is not empty. Never copy while the user types. The normalized caption is copied as plain text (label "Caption").
 - The user is told **before** sharing, via the switch subtitle on the Caption screen. No toast or snackbar is shown during launch (the handoff's toast is dropped), since the app is leaving the foreground and it would not be seen. On Android 13+ the system also shows its own clipboard confirmation.
-- First share only: a one-time coach mark (shown on tap, before launch, dismissed to continue) explaining that the caption sticker can be moved in Instagram and, if copying is on, that the caption is on the clipboard. The "seen" flag is stored in SharedPreferences.
+- First share only: a one-time coach mark ("Before you share") shown on tap, before Instagram opens. It has one line per thing to explain: the caption sticker can be dragged, pinched or rotated in Instagram (when the sticker is shown), and the caption is copied and can be pasted as text (when copying is on). If neither applies, it is skipped. "Got it" stores the "seen" flag (SharedPreferences) and continues the share; dismissing it cancels the share and it shows again next time.
 
 ---
 
 ## 17. Accessibility
 
-- Every icon-only control (close, flash, shutter, switch camera, back, undo, redo, remove sticker, resize handle, New photo) has a content description. The handoff HTML `aria-label` values are a good starting point.
+- Every icon-only control (close, flash, shutter, switch camera, back, undo, redo, remove sticker, New photo) has a content description. The resize/rotate handle is drawn on the canvas and is covered by the screen reader actions below.
 - Stickers in the sheet use their display name as the content description.
-- Sticker removal has a non-gesture alternative (✕ button on the selected sticker).
-- Touch targets are at least 48dp; color swatches announce their color name and selected state.
+- Sticker removal has a non-gesture alternative (✕ button on the selected sticker). Resizing and rotating do too: when a sticker is selected, the canvas announces it ("Photo, Done sticker selected") and offers screen reader custom actions: Make sticker bigger / smaller (×1.25), Rotate sticker left / right (15°), Remove sticker. Each is one undoable change.
+- Touch targets are at least 48dp: the design's 34dp category chips keep their look with a 48dp touch area, the sticker search field is 48dp tall, and the swatch row reaches 4dp into the side padding so seven swatches get 48dp even on 360dp-wide phones. Color swatches announce their color name and selected state.
+- Checked in tests (`accessibility/AccessibilityTest`): on every screen, each clickable, toggleable or selectable control must have a label and a 48×48dp touch area; `AccessibilitySanityTest` proves the check reports violations. Google's Accessibility Test Framework checks were tried first but report nothing under Robolectric, so the checks run on the Compose semantics tree.
 - The caption character counter is announced to screen readers when the limit is approached.
 - Text meets contrast on the dark palette (muted `#9A9A9A` on `#0E0E0E` is for secondary text only).
 
@@ -509,8 +511,8 @@ If the Facebook App ID is empty (debug builds without `facebook.appId`), Share s
 | Camera permission permanently denied | Permission denied screen with "Open app settings"; re-check on resume |
 | Permission revoked while on Capture | Return to the Permission screen |
 | Camera unavailable or in use by another app | Capture Error state with retry |
-| Landscape or front-camera capture | Normalized once after capture (D10) |
-| Out of memory while rendering | Retry once at half size, then show an error |
+| Landscape or front-camera capture | Normalized once after capture (D10); device rotation mapping unit-tested; front/back pixels tested for all 8 EXIF orientations; a sideways capture verified on the test phone (3840×2160, upright) |
+| Out of memory while rendering | Retry once at half size, then show an error (`withOutOfMemoryFallback`, unit-tested) |
 | Save tapped twice | Disabled until layers change (`exportedRevision`) |
 | Facebook App ID missing (debug build) | Share shows a developer-facing error instead of launching an intent Instagram will reject |
 
@@ -531,9 +533,9 @@ If the Facebook App ID is empty (debug builds without `facebook.appId`), Share s
 Tests are written in the milestone that introduces the code under test (section 21), not deferred.
 
 - **Unit tests (JVM):** editor reducer (add/remove layers, transforms, undo/redo, 50-entry cap), normalized coordinate mapping and brush-size conversion, snapshot serialization round-trip and version handling, `SessionStore` (serialized writes, write failure keeps state, restore-failure paths), cleanup rules, caption text normalization, sticker search/category filtering, edge color sampling, `StoryShareRequest` construction (action, package, extras, URIs, sticker/clipboard switch combinations), permission state transitions.
-- **Robolectric tests:** `StoryShareRequest` → `Intent` mapping (flags, grants), photo normalization pixel output with EXIF fixtures (all eight orientations, mirrored front-camera samples; added in milestone 9; milestone 2 covers the transform logic on the JVM and the pixels on a real device).
+- **Robolectric tests:** `StoryShareRequest` → `Intent` mapping and Instagram availability; photo normalization pixel output (`NormalizationPixelTest`: JPEGs tagged with all eight EXIF orientations, back and front camera, checking where each colored corner lands and that front photos are mirrored exactly once); accessibility checks and the sticker screen reader actions.
 - **Screenshot tests (Roborazzi + Robolectric native graphics):** every screen in its main states (`screenshots/ScreenScreenshotTest`), compared visually against the handoff PNGs during review; image exporter output with fixed layers and caption sticker with short, long, max-length, emoji-only, multi-line, and RTL captions (`screenshots/RenderScreenshotTest`). Reference images are committed in `app/src/test/screenshots/`. `./gradlew recordRoborazziDebug` records them, `./gradlew verifyRoborazziDebug` compares against them (and fails on any difference); a plain `test` run does not compare. Tests run as SDK 36 with a plain `Application` (no Hilt) and render the screens' `internal` `…Content` composables directly. The test JVM needs `--add-opens=java.base/jdk.internal.access=ALL-UNNAMED` (set in `app/build.gradle.kts`) for Robolectric's SDK 36 sandbox on recent JDKs.
-- **Instrumented tests:** camera flow with the CameraX test camera (milestone 9); FileProvider URIs readable from another app; gallery export on API 26–28 (legacy path) and 29+ (MediaStore). `GallerySaverTest` (API 29+ path) runs on the test phone; the API 26–28 path is not yet verified on a device.
+- **Instrumented tests** (on the test phone; they uninstall the app afterwards): `CaptureFlowTest` runs the real camera end to end (the app's permission screen, the system dialog answered with UiAutomator because some OEMs block programmatic grants, a real capture, the session file, the Editor), chosen over CameraX's fake test camera to cover the real path; `FileProviderTest` checks share files open through their content URIs and files outside `share/` are refused; gallery export on API 26–28 (legacy path) and 29+ (MediaStore). `GallerySaverTest` (API 29+ path) runs on the test phone; the API 26–28 path is not yet verified on a device.
 - **Manual QA matrix:** Instagram installed vs. missing, logged in vs. out, old Instagram version, front vs. back camera (preview matches result), landscape capture, empty caption, each combination of the two caption switches, Android 12 vs. 13+ clipboard behavior, permission denied once / permanently / "Only this time", process death round-trip ("Don't keep activities"), swipe-away fresh launch, low storage, API 26, and a recent API level.
 
 ---
@@ -552,7 +554,7 @@ Implement one milestone at a time. Each must build, include and pass its own tes
 | 6 | Rendering and save | Image exporter (share and gallery targets, OOM fallback) matching the editor; gallery save on API 26–28 and 29+; `exportedRevision` disables duplicate saves; Share screen shows the exporter's preview with Save and New photo |
 | 7 | Caption and Share screens | Caption screen per design with counter and switches; caption sticker renderer meeting the spec; Share screen with accurate centered caption preview and "move it in Instagram" hint; Roborazzi screenshot tests for all screens and renderers |
 | 8 | Instagram share | Stories opens directly with background, edge colors, and caption sticker per the switches; clipboard per the switch; `sharedAt` and Share again; availability check and Get Instagram fallback; sticker size measured on device (75% display width, fixed canvas) |
-| 9 | Edge cases and polish | All rows in section 18 handled; cleanup at app start; coach mark; accessibility checklist (section 17) met; Robolectric normalization pixel tests and the instrumented camera test (section 20) |
+| 9 | Edge cases and polish | All rows in section 18 handled; cleanup at app start; coach mark; accessibility checklist (section 17) met and checked in tests; Robolectric normalization pixel tests; real-camera and FileProvider instrumented tests; shared dialog and dark snackbar |
 | 10 | QA pass | Manual QA matrix from section 20 completed; screens checked against the handoff PNGs; issues fixed |
 
 ---

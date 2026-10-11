@@ -196,19 +196,23 @@ private fun DeviceRotationEffect(onRotation: (Int) -> Unit) {
         val listener = object : OrientationEventListener(context) {
             override fun onOrientationChanged(orientation: Int) {
                 if (orientation == ORIENTATION_UNKNOWN) return
-                currentOnRotation(
-                    when (orientation) {
-                        in 45 until 135 -> Surface.ROTATION_270
-                        in 135 until 225 -> Surface.ROTATION_180
-                        in 225 until 315 -> Surface.ROTATION_90
-                        else -> Surface.ROTATION_0
-                    },
-                )
+                currentOnRotation(surfaceRotationFor(orientation))
             }
         }
         listener.enable()
         onDispose { listener.disable() }
     }
+}
+
+/**
+ * Camera target rotation for a physical device angle (0–359°, clockwise, from
+ * OrientationEventListener): turned 90° clockwise means the display's natural top points right.
+ */
+internal fun surfaceRotationFor(orientationDegrees: Int): Int = when (orientationDegrees) {
+    in 45 until 135 -> Surface.ROTATION_270
+    in 135 until 225 -> Surface.ROTATION_180
+    in 225 until 315 -> Surface.ROTATION_90
+    else -> Surface.ROTATION_0
 }
 
 /** Rule-of-thirds guide lines. */

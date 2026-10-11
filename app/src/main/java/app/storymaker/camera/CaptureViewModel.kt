@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 enum class FlashMode(val imageCaptureMode: Int) {
     Off(ImageCapture.FLASH_MODE_OFF),
@@ -107,8 +108,11 @@ class CaptureViewModel @Inject constructor(
 
     private val bindRequests = MutableStateFlow(0)
 
-    /** Binds the camera to [lifecycleOwner] until cancelled, rebinding when the lens changes or on retry. */
-    suspend fun bindToCamera(lifecycleOwner: LifecycleOwner) {
+    /**
+     * Binds the camera to [lifecycleOwner] until cancelled, rebinding when the lens changes or on retry.
+     * CameraX requires binding on the main thread, so this switches to it whatever the caller's context.
+     */
+    suspend fun bindToCamera(lifecycleOwner: LifecycleOwner) = withContext(Dispatchers.Main.immediate) {
         val provider = ProcessCameraProvider.awaitInstance(context)
         combine(_uiState, bindRequests) { state, attempt -> state.useFrontCamera to attempt }
             .distinctUntilChanged()

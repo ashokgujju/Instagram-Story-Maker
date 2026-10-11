@@ -55,15 +55,7 @@ class ImageExporter @Inject constructor(
 ) {
     /** Renders [snapshot] onto [photo] at [target]'s size. Throws [ExportException] if it can't. */
     suspend fun render(snapshot: SessionSnapshot, photo: File, target: ExportTarget): Bitmap = withContext(io) {
-        try {
-            renderAt(snapshot, photo, target.maxLongSide)
-        } catch (e: OutOfMemoryError) {
-            try {
-                renderAt(snapshot, photo, target.maxLongSide / 2)
-            } catch (e: OutOfMemoryError) {
-                throw ExportException("Not enough memory to render the photo", e)
-            }
-        }
+        withOutOfMemoryFallback(target.maxLongSide) { maxLongSide -> renderAt(snapshot, photo, maxLongSide) }
     }
 
     private fun renderAt(snapshot: SessionSnapshot, photo: File, maxLongSide: Int): Bitmap {
@@ -134,6 +126,21 @@ class ImageExporter @Inject constructor(
         }
     }
 }
+
+/**
+ * Runs [render] at [maxLongSide]; if that runs out of memory, retries once at half the size.
+ * A second failure becomes an [ExportException] instead of a crash.
+ */
+internal inline fun <T> withOutOfMemoryFallback(maxLongSide: Int, render: (maxLongSide: Int) -> T): T =
+    try {
+        render(maxLongSide)
+    } catch (e: OutOfMemoryError) {
+        try {
+            render(maxLongSide / 2)
+        } catch (e: OutOfMemoryError) {
+            throw ExportException("Not enough memory to render the photo", e)
+        }
+    }
 
 /** Writes this bitmap as a JPEG. Throws [IOException] if encoding fails. */
 fun Bitmap.writeJpeg(out: OutputStream, quality: Int) {
