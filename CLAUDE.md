@@ -6,10 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The app has exactly one feature, a linear flow:
 
-1. **Capture**: take a photo with an in-app camera interface (not a hand-off to the system camera app).
-2. **Edit**: draw freehand and place stickers from the bundled sticker library on a canvas, then **export** the edited photo to the gallery or **discard** it.
+1. **Capture**: grant camera access and take a photo with an in-app camera interface (not a hand-off to the system camera app; no gallery import).
+2. **Edit**: draw freehand and place stickers from the bundled sticker library on a canvas. Back from the editor **discards** the photo (with confirmation).
 3. **Caption**: enter a caption for the photo.
-4. **Share**: open Instagram Stories directly (never the system share sheet) with the photo and caption preloaded.
+4. **Share**: preview the result, then open Instagram Stories directly (never the system share sheet) with the photo and caption preloaded, or **export** (Save) it to the gallery.
 
 Keep scope to this flow; don't add unrelated features.
 
@@ -17,15 +17,17 @@ Keep scope to this flow; don't add unrelated features.
 
 **`docs/ARCHITECTURE.md` is the source of truth** for design decisions, package structure, file storage, the Instagram intent contract, edge cases, testing, and the milestone plan. Read it before implementing anything. If an approach needs to change, update that document first, then the code.
 
+**`docs/design/`** is the UI design handoff: follow its PNGs/HTML for visuals, layout, and copy. Its implementation notes are suggestions only; where they conflict with the architecture doc (which lists the deliberate deviations in sections 7 and 8), the architecture doc wins.
+
 The decisions most likely to be gotten wrong without reading it:
 
-- The caption reaches Instagram as a transparent PNG **sticker** (`interactive_asset_uri`) plus a **clipboard copy**, because the Stories intent has no text field. The caption is never burned into the photo or the gallery export.
-- Instagram is launched with an **explicit-package** `com.instagram.share.ADD_TO_STORY` intent; never `Intent.createChooser`.
+- The caption reaches Instagram as a transparent PNG **sticker** (`interactive_asset_uri`, controlled by the "Show on photo" switch) plus an optional **clipboard copy** ("Copy to clipboard" switch), because the Stories intent has no text field. The caption is never burned into the photo or the gallery export.
+- Instagram is launched with an **explicit-package** `com.instagram.share.ADD_TO_STORY` intent; never `Intent.createChooser`. The design's "More" (share sheet) button is intentionally not built.
 - Editor layers use **normalized (0..1) image coordinates**; output images are rendered by replaying layers, never by screenshotting UI.
 - Captures and editor sessions live in **`noBackupFilesDir`**, not the cache. A single `SessionStore` is the only code that reads/writes session files (atomic, serialized, versioned JSON snapshot); `SavedStateHandle` holds only the session ID.
 - The captured photo is **normalized once right after capture** (orientation + front-camera mirroring baked in), so no later code rotates or mirrors.
 - Share files in `cache/share/` are never deleted on discard/New photo/launch; only the age-based cleanup at app start removes them.
-- Stickers come only from the Figma file "Project Status Stickers" (https://www.figma.com/design/Ul8AkOtTiNQa6uHNumE0xI/Project-Status-Stickers), exported and bundled as resources. Don't substitute other artwork.
+- Stickers come only from the Figma file "Project Status Stickers" (https://www.figma.com/design/Ul8AkOtTiNQa6uHNumE0xI/Project-Status-Stickers), exported and bundled as resources. The stickers in the design handoff are placeholders; don't ship them or substitute other artwork.
 - Work proceeds **one milestone at a time**; each milestone builds, ships its own tests, and is committed before the next.
 
 ## Project state
@@ -61,4 +63,4 @@ Use the Gradle wrapper from the repo root:
 
 ## Theming
 
-`ui/theme/Theme.kt` defines `StoryMakerTheme`, which uses Material You dynamic color on Android 12+ and falls back to the static schemes from `Color.kt`. Wrap any new screen/preview in `StoryMakerTheme`. `MainActivity` calls `enableEdgeToEdge()`, so screens must handle window insets (e.g. via `Scaffold`'s `innerPadding`).
+The app uses a **fixed dark theme** built from the handoff's design tokens with the bundled **Manrope** font (architecture doc section 7): no Material You dynamic color and no light theme. The template's `ui/theme/Theme.kt` (`StoryMakerTheme`, currently dynamic color with light/dark fallbacks) is replaced accordingly in milestone 1. The accent `#FF5A36` is reserved for the "Share to Instagram Stories" button. Touch targets are at least 48dp even where the mockups show 44px. Wrap any new screen/preview in `StoryMakerTheme`. `MainActivity` calls `enableEdgeToEdge()`, so screens must handle window insets (e.g. via `Scaffold`'s `innerPadding`).
