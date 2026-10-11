@@ -233,10 +233,11 @@ class ShareViewModel @Inject constructor(
                     ),
                 )
             } catch (e: IOException) {
-                _events.send(ShareEvent.ShareFailed)
-            } finally {
                 flags.update { it.copy(preparingShare = false) }
+                _events.send(ShareEvent.ShareFailed)
             }
+            // On success, "Preparing…" stays until the screen reports the launch result, so a quick
+            // second tap can't open Instagram twice.
         }
     }
 
@@ -255,11 +256,12 @@ class ShareViewModel @Inject constructor(
     /** Instagram opened: record the share (we can't know whether the user posts). */
     fun onLaunched() {
         sessionStore.update { it.copy(sharedAt = System.currentTimeMillis()) }
+        flags.update { it.copy(preparingShare = false) }
     }
 
     /** Instagram couldn't be launched (e.g. uninstalled mid-flow). */
     fun onLaunchFailed() {
-        flags.update { it.copy(instagramAvailable = false) }
+        flags.update { it.copy(instagramAvailable = false, preparingShare = false) }
         viewModelScope.launch { _events.send(ShareEvent.InstagramNotInstalled) }
     }
 

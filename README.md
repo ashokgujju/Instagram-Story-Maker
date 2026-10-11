@@ -2,7 +2,7 @@
 
 Android app: take a photo, draw on it and add stickers, write a caption, and share it straight to Instagram Stories.
 
-- Architecture and decisions: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (source of truth)
+- Architecture and decisions: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (source of truth; section 23 lists what was verified and the known gaps)
 - UI design handoff: [`docs/design/`](docs/design/)
 
 ## How it works
@@ -48,13 +48,13 @@ Kotlin, Jetpack Compose + Material 3, Navigation Compose (type-safe routes), Hil
 ./gradlew lint             # Android lint
 ```
 
-To try a release build locally, pass `-Pfacebook.appId=…` and sign the APK with the debug key.
+To try a release build locally, make sure the App ID is set (see Setup) and sign the APK with the debug key; there is no release keystore in the project.
 
 ## Tests
 
 ```bash
 ./gradlew test                     # JVM + Robolectric unit tests (app/src/test)
-./gradlew connectedAndroidTest     # instrumented tests (needs a device; uninstalls the app afterwards)
+./gradlew connectedAndroidTest     # instrumented tests (needs an unlocked device; uninstalls the app afterwards)
 ./gradlew verifyRoborazziDebug     # compare screenshots against app/src/test/screenshots
 ./gradlew recordRoborazziDebug     # re-record screenshot references after intended UI changes
 ```

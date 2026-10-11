@@ -149,6 +149,10 @@ The handoff (`docs/design/`) is the visual target. 1 CSS px in the mockups ≈ 1
 | No "New photo" action | "New photo" icon button (photo_camera) in the Share screen top bar | Lets the user start over after sharing |
 | 44px Next pill and 40px swatches | Next pill 48dp high; swatches share the row equally (48dp where the screen allows) | 48dp touch minimum |
 | Slider style | Thin 4dp track with a round 20dp thumb (Material 3's default expressive style overridden) | Match the design |
+| Editor canvas fills the width and crops the photo to a 358×504 box | The whole 9:16 photo is shown, letterboxed, so the canvas is narrower | The exported and shared image is the whole photo; drawing over areas hidden by a crop would be confusing |
+| Share preview fixed at 290×516 | Preview fills the available height at 9:16 | A larger, more accurate preview of what Instagram receives |
+| Caption screen is static | Content above Continue scrolls; Continue stays pinned | Field and switches stay reachable with the keyboard open |
+| No snackbar in the design | Dark snackbar (`#1F1F1F`, white text), lifted above the shutter on Capture | Short messages (saved, errors) in the app's style |
 | Caption pill at bottom-centre in the Share preview | Caption pill shown **centered**, as Instagram will place it, with a "You can move it in Instagram" hint | Preview must be accurate (section 4) |
 | "Show on photo" draws the caption into the export | Caption becomes the Instagram interactive sticker | D1, D6 |
 | Toast after copying to clipboard | No toast; the switch subtitle explains it | The app is leaving the foreground; a toast would not be seen (section 16) |
@@ -542,7 +546,7 @@ Tests are written in the milestone that introduces the code under test (section 
 
 ## 21. Milestones
 
-Implement one milestone at a time. Each must build, include and pass its own tests, and be committed before the next begins.
+Implement one milestone at a time. Each must build, include and pass its own tests, and be committed before the next begins. **All ten milestones are complete** (milestone 10 committed as "Milestone 10: QA pass"); see section 23 for what was verified and the known gaps.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -562,3 +566,39 @@ Implement one milestone at a time. Each must build, include and pass its own tes
 ## 22. Open questions
 
 - Analytics events, if any.
+
+---
+
+## 23. Verification status
+
+What was verified at the end of milestone 10, and where. The test phone is an OnePlus CPH2619 on Android 16 (API 36), with Instagram 450 installed and logged in. By decision, all device testing was done on this phone only.
+
+### Automated
+
+- **JVM and Robolectric unit tests** (`./gradlew test`): editor history and geometry, sticker geometry and TalkBack actions, session storage (atomic, serialized saves; restore failures; cleanup), photo normalization pixels for all 8 EXIF orientations (front and back camera), caption text and rendering (line fitting, fixed canvas), export sizing and the out-of-memory fallback, share files, edge colors, the Instagram intent and availability, coach mark rules, and accessibility checks (labels and 48dp touch areas) on every screen.
+- **Screenshot tests** (`./gradlew verifyRoborazziDebug`): every screen in its main states, the dialogs, the caption sticker variants (short, long, max length, multi-line, emoji, RTL), and the exporter output.
+- **Instrumented tests on the test phone** (`./gradlew connectedAndroidTest`, phone unlocked): the real-camera capture flow through the permission dialog, the FileProvider (share files readable; everything else refused), and gallery saving through MediaStore.
+
+### Manual QA on the test phone (milestone 10 unless noted)
+
+| Area | Result |
+|---|---|
+| Screens vs. the design PNGs | All seven screens compared; one spacing fix (Caption), the rest match or are listed in section 7 |
+| Permission: denied once / permanently / Settings round trip / expired "Only this time" | Pass |
+| Capture: back and front camera; sideways capture (milestone 9) | Pass: upright; front mirrored once; landscape 3840×2160 |
+| Process death ("Don't keep activities", and killing the app while Instagram is open) | Pass: the whole back stack restores, including after an Instagram round trip |
+| Fresh launch (force stop) | Pass: previous session discarded |
+| Share: the four switch combinations and an empty caption | Pass: sticker shown only with "Show on photo"; clipboard holds the caption only with "Copy to clipboard"; Android's clipboard confirmation chip appears |
+| Instagram missing (Instagram temporarily disabled) / re-enabled | Pass: "Get Instagram" opens the Play Store; the button returns after re-enabling |
+| Caption sticker size in Instagram (milestone 8) | Measured: Instagram shows stickers at 75% of the Story width; preview matches the composer |
+| Gallery save, cleanup at app start, coach mark (milestones 6 and 9) | Pass |
+| Release build | Capture, edit, caption and Save pass with R8 (milestone 10); a real share from a release build passed in milestone 8 |
+
+### Not verified (known gaps)
+
+- **API 26–28** (including the minimum SDK) and **Android 12 clipboard behavior**: no device or emulator at those levels was used. This includes the API 26–28 gallery save path (public file plus media scan, with the storage permission).
+- **Instagram logged out, or an old Instagram version**: not tested, to avoid changing the tester's Instagram account. If an old version ignores the sticker, the clipboard copy remains the fallback.
+- **Low storage**: not tested on a device. Write failures are covered by unit tests (state kept, error shown).
+- **TalkBack in use on a device**: the sticker actions and labels are checked in tests, but not exercised with TalkBack switched on.
+- **Two-finger pinch and twist on stickers**: the gesture math is unit-tested and the one-finger handle was tested on the device; two-finger gestures can't be scripted over adb and were not checked by hand.
+- **Release signing**: release builds are only signed locally with the debug key for testing; a release keystore is out of scope.

@@ -32,7 +32,7 @@ The decisions most likely to be gotten wrong without reading it:
 
 ## Project state
 
-StoryMaker is a **single-module** Android app (`:app`, package `app.storymaker`) built with Jetpack Compose + Material 3. Keep it single-module; organize code by feature packages as described in the architecture doc. It started from the stock Android Studio "Empty Activity" template; check git history for which milestones are done.
+StoryMaker is a **single-module** Android app (`:app`, package `app.storymaker`) built with Jetpack Compose + Material 3. Keep it single-module; organize code by feature packages as described in the architecture doc. All ten milestones in the architecture doc are complete; section 23 of the doc lists what was verified and the known gaps. Changes from here on are maintenance: keep the architecture doc, tests, and screenshot references in step with the code.
 
 ## Commands
 
