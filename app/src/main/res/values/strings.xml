@@ -31,6 +31,24 @@
     <string name="message_edits_reset">Your edits couldn\'t be restored</string>
     <string name="message_save_failed">Couldn\'t save your changes. Check your device storage.</string>
 
+    <string name="editor_undo">Undo</string>
+    <string name="editor_redo">Redo</string>
+    <string name="editor_tab_draw">Draw</string>
+    <string name="editor_tab_stickers">Stickers</string>
+    <string name="editor_brush_size">Brush size</string>
+    <string name="editor_stickers_coming">Sticker library arrives in the next update.</string>
+    <string name="editor_discard_title">Discard photo?</string>
+    <string name="editor_discard_body">Your drawing will be lost.</string>
+    <string name="editor_discard_confirm">Discard</string>
+    <string name="editor_discard_keep">Keep editing</string>
+    <string name="color_white">White</string>
+    <string name="color_black">Black</string>
+    <string name="color_coral">Coral</string>
+    <string name="color_yellow">Yellow</string>
+    <string name="color_green">Green</string>
+    <string name="color_blue">Blue</string>
+    <string name="color_violet">Violet</string>
+
     <string name="caption_title">Caption</string>
 
     <string name="share_title">Ready to share</string>

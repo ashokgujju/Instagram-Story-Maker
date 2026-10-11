@@ -46,4 +46,31 @@ class SessionSnapshotTest {
         assertEquals(true, decoded.showOnPhoto)
         assertEquals(false, decoded.copyToClipboard)
     }
+
+    @Test
+    fun layersAndHistory_roundTrip() {
+        val stroke = StrokeLayer("a", 0xFFFF5A36.toInt(), 0.02f, listOf(0.1f, 0.2f, 0.3f, 0.4f))
+        val sticker = StickerLayer("b", "done", 0.5f, 0.5f, 0.3f, 12f)
+        val withLayers = snapshot.copy(
+            layers = listOf(stroke, sticker),
+            undoStack = listOf(LayerChange(0, after = stroke), LayerChange(1, after = sticker)),
+            redoStack = listOf(LayerChange(1, before = sticker, after = sticker.copy(rotation = 0f))),
+            editorTab = EditorTab.Stickers,
+            brushColor = 0xFF3B82F6.toInt(),
+            brushSizeDp = 14f,
+        )
+        val encoded = json.encodeToString(SessionSnapshot.serializer(), withLayers)
+        assertEquals(withLayers, json.decodeFromString(SessionSnapshot.serializer(), encoded))
+    }
+
+    @Test
+    fun milestoneTwoSnapshot_decodesWithEditorDefaults() {
+        val encoded = """{"version":1,"sessionId":"abc","createdAt":1,"photoWidth":10,"photoHeight":20,"caption":""}"""
+        val decoded = json.decodeFromString(SessionSnapshot.serializer(), encoded)
+        assertEquals(emptyList<Layer>(), decoded.layers)
+        assertEquals(emptyList<LayerChange>(), decoded.undoStack)
+        assertEquals(EditorTab.Draw, decoded.editorTab)
+        assertEquals(SessionSnapshot.DEFAULT_BRUSH_COLOR, decoded.brushColor)
+        assertEquals(SessionSnapshot.DEFAULT_BRUSH_SIZE_DP, decoded.brushSizeDp)
+    }
 }

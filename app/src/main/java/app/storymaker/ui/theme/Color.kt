@@ -14,6 +14,9 @@ val OnBackground = Color(0xFFFFFFFF)
 val OnSurfaceVariant = Color(0xFFB5B5B5)
 val Muted = Color(0xFF9A9A9A)
 
+/** Icon color of disabled round icon buttons (e.g. Redo with nothing to redo). */
+val DisabledIcon = Color(0xFF8A8A8A)
+
 /** Text color of borderless text buttons such as "Not now". */
 val TextButtonContent = Color(0xFFD4D4D4)
 

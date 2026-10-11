@@ -26,8 +26,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.storymaker.R
 import app.storymaker.ui.theme.Accent
+import app.storymaker.ui.theme.DisabledIcon
 import app.storymaker.ui.theme.OnAccent
 import app.storymaker.ui.theme.OnBackground
 import app.storymaker.ui.theme.PrimaryButtonContainer
@@ -36,7 +38,11 @@ import app.storymaker.ui.theme.StoryMakerTheme
 import app.storymaker.ui.theme.SurfaceHigh
 import app.storymaker.ui.theme.TextButtonContent
 
-/** White pill: Continue, Next, Open app settings. */
+/**
+ * White pill: Continue, Next, Open app settings.
+ *
+ * @param compact smaller variant for top bars (the design's 44px Next, rounded up to the 48dp touch minimum)
+ */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -44,6 +50,7 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     @DrawableRes icon: Int? = null,
+    compact: Boolean = false,
 ) = PillButton(
     text = text,
     onClick = onClick,
@@ -52,8 +59,9 @@ fun PrimaryButton(
     icon = icon,
     containerColor = PrimaryButtonContainer,
     contentColor = PrimaryButtonContent,
-    height = 56.dp,
-    textStyle = MaterialTheme.typography.labelLarge,
+    height = if (compact) 48.dp else 56.dp,
+    textStyle = if (compact) MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp) else MaterialTheme.typography.labelLarge,
+    horizontalPadding = if (compact) 20.dp else 24.dp,
 )
 
 /** Accent pill, reserved for "Share to Instagram Stories". */
@@ -131,7 +139,7 @@ fun RoundIconButton(
             containerColor = containerColor,
             contentColor = OnBackground,
             disabledContainerColor = containerColor,
-            disabledContentColor = OnBackground.copy(alpha = 0.38f),
+            disabledContentColor = DisabledIcon,
         ),
     ) {
         Icon(
@@ -153,6 +161,7 @@ private fun PillButton(
     contentColor: Color,
     height: Dp,
     textStyle: TextStyle,
+    horizontalPadding: Dp = 24.dp,
 ) {
     Button(
         onClick = onClick,
@@ -165,7 +174,7 @@ private fun PillButton(
             disabledContainerColor = containerColor.copy(alpha = 0.38f),
             disabledContentColor = contentColor.copy(alpha = 0.6f),
         ),
-        contentPadding = PaddingValues(horizontal = 24.dp),
+        contentPadding = PaddingValues(horizontal = horizontalPadding),
     ) {
         if (icon != null) {
             Icon(painter = painterResource(icon), contentDescription = null, modifier = Modifier.size(20.dp))

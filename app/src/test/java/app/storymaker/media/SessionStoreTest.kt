@@ -221,4 +221,20 @@ class SessionStoreTest {
 
         assertFalse(files.sessionDir(id).exists())
     }
+
+    @Test
+    fun layers_surviveReloadInNewStore() = runTest {
+        val stroke = StrokeLayer("a", 0xFFFFFFFF.toInt(), 0.02f, listOf(0.1f, 0.2f, 0.3f, 0.4f))
+        val id = newStore().run {
+            val id = capture()
+            update { it.copy(layers = listOf(stroke), undoStack = listOf(LayerChange(0, after = stroke)), revision = 1) }
+            flush()
+            id
+        }
+
+        val restored = (newStore().load(id) as LoadResult.Restored).snapshot
+
+        assertEquals(listOf(stroke), restored.layers)
+        assertEquals(1, restored.undoStack.size)
+    }
 }

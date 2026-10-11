@@ -146,6 +146,8 @@ The handoff (`docs/design/`) is the visual target. 1 CSS px in the mockups ≈ 1
 |---|---|---|
 | "More" button (system share sheet) on Share | Removed; Save takes the full width | D2: never the share sheet |
 | No "New photo" action | "New photo" icon button (photo_camera) in the Share screen top bar | Lets the user start over after sharing |
+| 44px Next pill and 40px swatches | Next pill 48dp high; swatches share the row equally (48dp where the screen allows) | 48dp touch minimum |
+| Slider style | Thin 4dp track with a round 20dp thumb (Material 3's default expressive style overridden) | Match the design |
 | Caption pill at bottom-centre in the Share preview | Caption pill shown **centered**, as Instagram will place it, with a "You can move it in Instagram" hint | Preview must be accurate (section 4) |
 | "Show on photo" draws the caption into the export | Caption becomes the Instagram interactive sticker | D1, D6 |
 | Toast after copying to clipboard | No toast; the switch subtitle explains it | The app is leaving the foreground; a toast would not be seen (section 16) |
@@ -212,10 +214,10 @@ Capture ──shutter──▶ Editor [Draw ⇄ Stickers] ──Next──▶ Ca
 | `version` | Snapshot schema version |
 | `sessionId`, `createdAt` | Identity |
 | `photoWidth`, `photoHeight` | Pixel size of the normalized capture |
-| `layers` | Current stroke and sticker layers |
-| `undoStack`, `redoStack` | Capped at 50 entries each; oldest entries are dropped |
+| `layers` | Current stroke and sticker layers (polymorphic: `stroke` / `sticker`) |
+| `undoStack`, `redoStack` | `LayerChange(index, before, after)` records, most recent last, capped at 50 each (oldest dropped). Only the change is stored, so history size grows with edits, not with the number of layers |
 | `editorTab` | Draw or Stickers |
-| `brush` | Current color and size |
+| `brushColor`, `brushSizeDp` | Current brush (ARGB color, size in dp; default white, 8dp) |
 | `caption` | Caption text as typed |
 | `showOnPhoto` | "Show on photo" switch (default true) |
 | `copyToClipboard` | "Copy to clipboard" switch (default false) |
@@ -282,7 +284,7 @@ The app must never crash on restore:
 
 ### Layout
 
-- Top bar: Back (left), undo and redo (centre, Draw tab only, disabled when the stack is empty), **Next** (right, white pill).
+- Top bar: Back (left), undo and redo (centre, Draw tab only, disabled when the stack is empty, disabled icon `#8A8A8A`), **Next** (right, compact white pill).
 - Photo canvas with radius 20, fitted to the space between the top bar and the controls.
 - Draw/Stickers segmented tab bar below the canvas.
 - **Draw tab:** 7 color swatches (selected swatch has a ring) and a brush-size slider with small/large dot end markers.
@@ -292,10 +294,12 @@ The app must never crash on restore:
 
 All positions and sizes are normalized to the normalized capture (0..1), so edits are independent of display size.
 
-- **StrokeLayer:** list of normalized points, color, stroke width as a fraction of image width.
+- **StrokeLayer:** flattened normalized points (`x0, y0, x1, y1, …`, rounded to 4 decimals at commit), ARGB color, stroke width as a fraction of image width.
 - **StickerLayer:** sticker ID, normalized center, scale as a fraction of image width, rotation in degrees.
 
-Editor state also holds the undo stack and redo stack (each capped at 50 entries, one stack shared by strokes and sticker actions), the current tab, brush color and size, and the selected sticker ID. State changes go through a pure reducer so they can be unit-tested; the resulting state is pushed to `SessionStore`.
+Editor state also holds the undo stack and redo stack (each capped at 50 entries, one history shared by strokes and sticker actions), the current tab, brush color and size, and the selected sticker ID. Edits go through pure functions on the snapshot (`editor/EditHistory.kt`: `addLayer`, `applyEdit`, `undo`, `redo`) so they can be unit-tested; the result is pushed to `SessionStore`. The stroke being drawn lives in screen-local state and is committed on finger-up.
+
+Stroke geometry is shared with the exporter (`media/StrokeGeometry.kt`): `fitRect` letterboxes the photo, points map between normalized and screen coordinates, and `smoothStroke` produces quadratic curves through point midpoints (a single point is a dot), so the screen and the exported image draw identical strokes.
 
 ### Rendering
 
@@ -303,7 +307,7 @@ A single Compose canvas draws the photo fitted to the available area (letterboxe
 
 ### Interaction
 
-- **Drawing (Draw tab):** drag gestures append points to an in-progress stroke; the stroke is committed as a layer on drag end, which pushes an undo entry. Smooth strokes using quadratic curves through point midpoints. Drop points closer than a small threshold to keep snapshots compact. Brush size slider runs 2–24dp (default 8dp), converted to a fraction of image width using the displayed photo width when the stroke starts.
+- **Drawing (Draw tab):** a custom pointer loop (`awaitEachGesture`, not `detectDragGestures`) starts the stroke on touch-down with no touch slop and follows the first finger only; a tap draws a dot. Points closer than 1.5dp to the previous one are dropped. Strokes may run past the photo edge and are clipped when drawn. The stroke is committed as a layer on release, which pushes an undo entry. Brush size slider runs 2–24dp (default 8dp), converted to a fraction of image width using the displayed photo width when the stroke starts. Drawing is disabled until the photo loads and while the Stickers tab is selected.
 - **Stickers (Stickers tab):**
   - Tapping a tile places the sticker at the centre of the photo and selects it.
   - Tap a sticker to select it (hit-test topmost first); tap empty canvas to deselect.

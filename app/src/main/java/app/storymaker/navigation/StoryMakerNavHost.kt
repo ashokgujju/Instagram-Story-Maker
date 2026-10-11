@@ -107,7 +107,7 @@ fun StoryMakerNavHost(
                 val route = entry.toRoute<EditorRoute>()
                 val photoNotRestoredMessage = stringResource(R.string.message_photo_not_restored)
                 EditorScreen(
-                    onBack = { navController.popBackStack() },
+                    onDiscarded = { navController.popBackStack<CaptureRoute>(inclusive = false) },
                     onNext = dropUnlessResumed { navController.navigate(CaptionRoute(route.sessionId)) },
                     onPhotoUnavailable = {
                         navController.navigate(CaptureRoute) {
