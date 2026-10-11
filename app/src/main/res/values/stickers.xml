@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="sticker_category_all">All</string>
     <string name="sticker_category_status">Status</string>
     <string name="sticker_category_reactions">Reactions</string>
     <string name="sticker_category_vibes">Vibes</string>
+
+    <string name="sticker_search_hint">Search stickers</string>
+    <string name="sticker_none_found">No stickers found</string>
+    <string name="sticker_remove">Remove sticker</string>
 
     <!-- Sticker display names; also used as content descriptions. -->
     <string name="sticker_name_done">Done</string>

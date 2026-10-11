@@ -171,7 +171,9 @@ Capture ──shutter──▶ Editor [Draw ⇄ Stickers] ──Next──▶ Ca
 
 - **Start destination:** Capture if CAMERA is granted, otherwise Permission.
 - **Close (X) / "Not now"** on the Permission, Permission denied, and Capture screens closes the app (`finish()`). There is no home screen; the camera is the only way in.
-- **Editor Back** (top-left arrow and system back): if the session has any layers, show a "Discard photo?" confirmation; confirming deletes the session and returns to Capture (D12). With no layers, discard without asking.
+- **Editor Back** (top-left arrow and system back):
+  - On the **Stickers tab**, Back returns to the Draw tab (the design's "Back to drawing").
+  - On the **Draw tab**, if the session has any layers, show a "Discard photo?" confirmation; confirming deletes the session and returns to Capture (D12). With no layers, discard without asking.
 - **Caption Back** returns to the Editor with layers and undo history intact. **Share Back** returns to Caption.
 - **Share screen** is the hub after sharing: when the user returns from Instagram they land here with everything intact and can Share again, Save, or tap **New photo** (deletes the session, returns to Capture; asks for confirmation if the current edits haven't been saved or shared).
 - When a share is launched, the session records `sharedAt` (used by the New photo confirmation and analytics, if added).
@@ -288,7 +290,7 @@ The app must never crash on restore:
 - Photo canvas with radius 20, fitted to the space between the top bar and the controls.
 - Draw/Stickers segmented tab bar below the canvas.
 - **Draw tab:** 7 color swatches (selected swatch has a ring) and a brush-size slider with small/large dot end markers.
-- **Stickers tab:** a **non-modal** bottom sheet (e.g. `BottomSheetScaffold`, partially expanded by default) with search, category chips, and a 4-column sticker grid. The canvas above the sheet stays interactive so a placed sticker can be adjusted while the sheet is open. Dragging the sheet down collapses it to show the full canvas.
+- **Stickers tab:** as in the design, the top bar shows only Back ("Back to drawing") and Next, and the sticker sheet (search, category chips, 4-column grid) covers the controls area. The sheet is a non-modal overlay with two positions, snapped to on release of a handle drag: **expanded** (~400dp, covering the lower part of the canvas, as designed) and **collapsed** (covering only the Draw controls, so the whole photo shows). It is built with `draggable` plus an animated offset, not `BottomSheetScaffold`. The Draw controls keep their space underneath (hidden and excluded from accessibility), so **the photo stays the same size on both tabs**. Focusing search expands the sheet; it rises above the keyboard.
 
 ### Layer model
 
@@ -309,10 +311,13 @@ A single Compose canvas draws the photo fitted to the available area (letterboxe
 
 - **Drawing (Draw tab):** a custom pointer loop (`awaitEachGesture`, not `detectDragGestures`) starts the stroke on touch-down with no touch slop and follows the first finger only; a tap draws a dot. Points closer than 1.5dp to the previous one are dropped. Strokes may run past the photo edge and are clipped when drawn. The stroke is committed as a layer on release, which pushes an undo entry. Brush size slider runs 2–24dp (default 8dp), converted to a fraction of image width using the displayed photo width when the stroke starts. Drawing is disabled until the photo loads and while the Stickers tab is selected.
 - **Stickers (Stickers tab):**
-  - Tapping a tile places the sticker at the centre of the photo and selects it.
+  - Tapping a tile places the sticker at the centre of the photo at 35% of the photo width, unrotated, and selects it. Size is limited to 8%–150% of the photo width and the centre stays on the photo.
   - Tap a sticker to select it (hit-test topmost first); tap empty canvas to deselect.
   - The selected sticker shows a dashed bounding box, a **remove (✕) button** at the top-left, and a **resize/rotate handle** at the bottom-right. Dragging the handle scales and rotates the sticker around its centre with one finger.
   - Pan with one finger; pinch to scale and twist to rotate with two fingers.
+  - The ✕ and the handle are drawn at the design's sizes (28dp, 12dp) with 48dp touch areas. The ✕ is a real button (TalkBack-reachable, the non-gesture way to remove a sticker).
+  - Stickers can only be selected and edited on the Stickers tab; the Draw tab only draws. Layers keep plain order: whatever was added last is drawn on top.
+  - **Performance:** while a gesture runs, the in-progress sticker is read only in the draw/layout phases (no recomposition per frame), and the artwork keeps rendering at its saved size and is scaled on the GPU, so the vector isn't re-rasterized every frame; it re-renders sharp on release.
   - Each completed gesture (place, move, transform, remove) pushes one undo entry.
 - **Next** goes to Caption (enabled even with no edits).
 
@@ -536,7 +541,7 @@ Implement one milestone at a time. Each must build, include and pass its own tes
 | 2 | Permission, camera, and sessions | Permission and Permission denied screens with full result handling; Capture screen per design (grid, flash cycle, switch camera); 16:9 capture at capped resolution into a session folder; normalization verified on real front and back cameras; error states; `SessionStore` with atomic, serialized, versioned snapshots, active pointer, fresh-launch vs. restore logic, and restore-failure handling |
 | 3 | Stickers | Outlined Figma set extracted to 40 VectorDrawables by `tools/stickers/extract_stickers.py`; catalog with stable IDs, categories, and tags; repository and filtering |
 | 4 | Editor drawing | Editor layout and Draw tab per design; layer model, reducer, freehand drawing, swatches, brush slider, undo/redo with cap, edits persisted through `SessionStore` and surviving process death; Back → discard confirmation |
-| 5 | Editor stickers | Stickers tab with non-modal sheet, search, category chips, grid; place, select, move, pinch, rotate, ✕ remove, and resize/rotate handle |
+| 5 | Editor stickers | Stickers tab with the two-position sheet, search, category chips, grid; place, select, move, pinch, rotate, ✕ remove, and resize/rotate handle; one undo step per gesture |
 | 6 | Rendering and save | Image exporter (share and gallery targets, OOM fallback); gallery save on API 26–28 and 29+; `exportedRevision` disables duplicate saves (wired to a Save button on the Share screen) |
 | 7 | Caption and Share screens | Caption screen per design with counter and switches; caption sticker renderer meeting the spec; Share screen with accurate centered preview, Save, and New photo; screenshot tests set up |
 | 8 | Instagram share | Stories opens directly with background, edge colors, and caption sticker per the switches; clipboard per the switch; `sharedAt`; availability check and Get Instagram fallback; sticker size tuned on device |

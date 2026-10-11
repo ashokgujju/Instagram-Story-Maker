@@ -84,4 +84,28 @@ class EditHistoryTest {
         assertEquals(placed.layers, afterRemove.undo().layers)
         assertEquals(listOf(sticker), afterRemove.undo().redo().layers)
     }
+
+    @Test
+    fun stickerEdits_undoAndRedoStepByStep() {
+        val placed = StickerLayer("st", "done", 0.5f, 0.5f, 0.35f, 0f)
+        val moved = placed.copy(centerX = 0.3f, centerY = 0.2f)
+        val resized = moved.copy(scale = 0.7f, rotation = 15f)
+
+        val states = mutableListOf(empty.addLayer(stroke(1)))
+        states += states.last().addLayer(placed)
+        states += states.last().applyEdit(LayerChange(1, placed, moved))
+        states += states.last().applyEdit(LayerChange(1, moved, resized))
+        states += states.last().applyEdit(LayerChange(1, resized, null))
+        assertEquals(listOf(stroke(1)), states.last().layers)
+
+        var snapshot = states.last()
+        for (expected in states.dropLast(1).reversed()) {
+            snapshot = snapshot.undo()
+            assertEquals(expected.layers, snapshot.layers)
+        }
+        for (expected in states.drop(1)) {
+            snapshot = snapshot.redo()
+            assertEquals(expected.layers, snapshot.layers)
+        }
+    }
 }

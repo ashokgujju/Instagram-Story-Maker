@@ -36,7 +36,7 @@
     <string name="editor_tab_draw">Draw</string>
     <string name="editor_tab_stickers">Stickers</string>
     <string name="editor_brush_size">Brush size</string>
-    <string name="editor_stickers_coming">Sticker library arrives in the next update.</string>
+    <string name="editor_back_to_drawing">Back to drawing</string>
     <string name="editor_discard_title">Discard photo?</string>
     <string name="editor_discard_body">Your drawing will be lost.</string>
     <string name="editor_discard_confirm">Discard</string>
