@@ -1,5 +1,6 @@
 package app.storymaker.camera
 
+import androidx.activity.compose.LocalActivity
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,9 +30,50 @@ import app.storymaker.ui.theme.Muted
 import app.storymaker.ui.theme.StoryMakerTheme
 import app.storymaker.ui.theme.SurfaceHigh
 
-/** In-app explanation shown before the system camera permission prompt. */
+/**
+ * In-app explanation shown before the system camera permission prompt. Continue shows the
+ * prompt; a denial the system can ask about again keeps the user here.
+ */
 @Composable
 fun PermissionScreen(
+    onGranted: () -> Unit,
+    onPermanentlyDenied: () -> Unit,
+    onNotNow: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val requestPermission = rememberCameraPermissionRequest { outcome ->
+        when (outcome) {
+            PermissionOutcome.Granted -> onGranted()
+            PermissionOutcome.PermanentlyDenied -> onPermanentlyDenied()
+            PermissionOutcome.AskAgain -> Unit
+        }
+    }
+    CameraPermissionOnResume { granted -> if (granted) onGranted() }
+    PermissionContent(
+        onContinue = requestPermission,
+        onNotNow = onNotNow,
+        onClose = onClose,
+    )
+}
+
+/** Shown when the camera permission is permanently denied. Returning from Settings with access granted continues. */
+@Composable
+fun PermissionDeniedScreen(
+    onGranted: () -> Unit,
+    onNotNow: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val activity = LocalActivity.current
+    CameraPermissionOnResume { granted -> if (granted) onGranted() }
+    PermissionDeniedContent(
+        onOpenSettings = { activity?.openAppSettings() },
+        onNotNow = onNotNow,
+        onClose = onClose,
+    )
+}
+
+@Composable
+private fun PermissionContent(
     onContinue: () -> Unit,
     onNotNow: () -> Unit,
     onClose: () -> Unit,
@@ -46,9 +88,8 @@ fun PermissionScreen(
     footer = stringResource(R.string.permission_footer),
 )
 
-/** Shown when the camera permission is permanently denied. */
 @Composable
-fun PermissionDeniedScreen(
+private fun PermissionDeniedContent(
     onOpenSettings: () -> Unit,
     onNotNow: () -> Unit,
     onClose: () -> Unit,
@@ -125,11 +166,11 @@ private fun PermissionLayout(
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
 private fun PermissionScreenPreview() {
-    StoryMakerTheme { PermissionScreen(onContinue = {}, onNotNow = {}, onClose = {}) }
+    StoryMakerTheme { PermissionContent(onContinue = {}, onNotNow = {}, onClose = {}) }
 }
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
 private fun PermissionDeniedScreenPreview() {
-    StoryMakerTheme { PermissionDeniedScreen(onOpenSettings = {}, onNotNow = {}, onClose = {}) }
+    StoryMakerTheme { PermissionDeniedContent(onOpenSettings = {}, onNotNow = {}, onClose = {}) }
 }

@@ -8,6 +8,7 @@
     <string name="action_not_now">Not now</string>
     <string name="action_new_photo">New photo</string>
     <string name="action_save">Save</string>
+    <string name="action_try_again">Try again</string>
 
     <string name="permission_title">Allow camera access</string>
     <string name="permission_body">Take a photo to draw on, decorate with stickers and share to your story.</string>
@@ -18,6 +19,17 @@
     <string name="permission_denied_open_settings">Open app settings</string>
 
     <string name="capture_shutter">Take photo</string>
+    <string name="capture_switch_camera">Switch camera</string>
+    <string name="capture_flash_off">Flash off</string>
+    <string name="capture_flash_auto">Flash auto</string>
+    <string name="capture_flash_on">Flash on</string>
+    <string name="capture_error_camera_unavailable">The camera isn\'t available right now. It may be in use by another app.</string>
+    <string name="capture_error_capture_failed">Couldn\'t take the photo.</string>
+    <string name="capture_error_storage">Couldn\'t save the photo. Your device may be low on storage.</string>
+
+    <string name="message_photo_not_restored">Your previous photo couldn\'t be restored</string>
+    <string name="message_edits_reset">Your edits couldn\'t be restored</string>
+    <string name="message_save_failed">Couldn\'t save your changes. Check your device storage.</string>
 
     <string name="caption_title">Caption</string>
 

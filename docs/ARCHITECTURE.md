@@ -69,7 +69,7 @@ Do not implement any of the following:
 
 - Kotlin, Jetpack Compose, Material 3
 - Single Activity, Navigation Compose with type-safe routes (kotlinx.serialization)
-- kotlinx.serialization JSON for the session snapshot; `androidx.core.util.AtomicFile` for atomic writes
+- kotlinx.serialization JSON for the session snapshot; atomic writes via a temporary file plus `java.nio.file.Files.move(ATOMIC_MOVE)` (available from API 26, and testable on the plain JVM)
 - MVVM with unidirectional state (immutable UI state, one-shot events via a channel)
 - Hilt (via KSP) for dependency injection. Verified in milestone 1: Hilt 2.60.1 + KSP 2.3.12 work with AGP 9.4 built-in Kotlin (2.2.10) and the configuration cache.
 - Coroutines and Flow
@@ -106,7 +106,8 @@ Rules:
 
 - Feature packages (`camera`, `editor`, `caption`, `share`) depend on `media`, `stickers`, and `ui`, never on each other. Shared types (including the layer model used by the exporter) live in `media` or `ui`.
 - `media`, `stickers`, and `ui` never depend on feature packages.
-- Navigation passes only identifiers (session ID), never bitmaps.
+- Navigation passes only identifiers (session ID), never bitmaps. Feature ViewModels read the session ID from `SavedStateHandle` by its key (`sessionId`) rather than importing route classes, so features never depend on `navigation/`.
+- Short app-level messages (snackbars) are shown by a single `SnackbarHost` in the nav host; screens report messages through callbacks, and `SessionStore` write errors are collected there.
 - No business logic in composables; composables render state and emit intents.
 
 ---
@@ -199,7 +200,7 @@ Capture ──shutter──▶ Editor [Draw ⇄ Stickers] ──Next──▶ Ca
 - `SessionStore` (app-wide singleton in `media/`) is the **only** code that reads or writes session files. It holds the current session state in memory as a `StateFlow`; ViewModels read from it and send updates through it. No ViewModel writes files directly.
 - **Writes:**
   - Serialized behind a `Mutex`, so screens can never overwrite each other's changes.
-  - Atomic, via `AtomicFile`: write to a temporary file, then rename over the old one. A crash mid-write leaves the previous snapshot intact.
+  - Atomic: write `session.json.tmp`, sync it, then `Files.move(ATOMIC_MOVE, REPLACE_EXISTING)` over the old file. A crash mid-write leaves the previous snapshot intact.
   - Debounced (~300ms after the last change) and flushed immediately when the app goes to the background (`ProcessLifecycleOwner` `ON_STOP`).
   - Run in an application-scoped coroutine scope owned by `SessionStore`, not `viewModelScope`, so a pending write is not cancelled when a ViewModel is cleared.
 - **Write failure** (e.g. disk full): keep the in-memory state, show a non-blocking error, and retry on the next change. Never lose the in-memory session because a write failed.
@@ -243,6 +244,11 @@ The app must never crash on restore:
 
 - Rendered share assets are derived, temporary state. Regenerate them if missing; never persist their URIs as source of truth.
 
+### Snapshot schema policy
+
+- New fields are added with default values, so older `session.json` files stay readable (parsing ignores unknown keys).
+- `version` is bumped only for incompatible changes; a file with a newer `version` than the app supports is treated as unreadable (restore without edits).
+
 ---
 
 ## 10. Permission and camera
@@ -263,9 +269,11 @@ The app must never crash on restore:
 - Use cases: Preview and ImageCapture, bound to the lifecycle. Capture mode: minimize latency.
 - Aspect ratio and size: portrait 16:9 for both preview and capture (D11), via `ResolutionSelector` with a 16:9 aspect ratio strategy and a resolution target capped at about 4K (long side ~3840px). Never capture at the sensor's full resolution.
 - Layout per design: preview fills the top of the screen with 28dp bottom corners and a rule-of-thirds grid overlay; close (top-left) and flash (top-right) float over it; shutter (centre) and switch camera (right) sit below it.
-- Flash toggle cycles off → auto → on, with matching icons.
+- Flash toggle cycles off → auto → on, with matching icons. It is hidden when the current camera has no flash unit (typically the front camera).
+- **Orientation:** the activity is locked to portrait (the design is portrait-only). An `OrientationEventListener` feeds the device's physical rotation to `ImageCapture.targetRotation`, so photos taken with the phone held sideways come out upright and landscape. Android 16 ignores the portrait lock on large screens (600dp and wider); phones keep it, and large-screen layouts are out of scope for now.
 - Output: a JPEG written to `noBackupFilesDir/sessions/<id>/capture.jpg`, not the user's gallery or the cache. Capturing a new photo replaces (deletes) the previous session.
-- **Normalization (D10):** immediately after capture, off the main thread, decode the JPEG, apply its EXIF orientation (including the flip variants), apply front-camera mirroring if the result does not already match the preview, and re-encode `capture.jpg` upright with the orientation tag removed. Navigate to the Editor only after this completes. Verify on real devices in milestone 2 that the front-camera result matches the preview exactly once (not unmirrored, not double-mirrored).
+- **Normalization (D10):** immediately after capture, off the main thread, decode the JPEG, apply its EXIF orientation (including the flip variants), mirror front-camera photos, and re-encode `capture.jpg` upright with no EXIF. If the photo needs no transform (back camera, no orientation tag) it is left as is. Navigate to the Editor only after this completes.
+- **Mirroring rule (verified on device in milestone 2):** capture requests no mirroring from CameraX (`ImageCapture.Metadata.isReversedHorizontal = false`), and the normalizer flips horizontally when the photo is from the front camera **or** its EXIF orientation is a flip variant (`flip = exifFlip || isFrontCamera`), so a photo is never mirrored twice. On the test phone (OPPO CPH2619, Android 16) back-camera JPEGs arrive upright with no orientation tag, and front-camera results match the mirrored preview exactly once.
 - UI states: Ready, Capturing, Processing (normalization), Error. Error covers camera unavailable or in use by another app, capture failure, and storage write failure, each with a retry action.
 
 ---
@@ -501,9 +509,9 @@ The intent is described by a plain Kotlin `StoryShareRequest` (action, package, 
 Tests are written in the milestone that introduces the code under test (section 21), not deferred.
 
 - **Unit tests (JVM):** editor reducer (add/remove layers, transforms, undo/redo, 50-entry cap), normalized coordinate mapping and brush-size conversion, snapshot serialization round-trip and version handling, `SessionStore` (serialized writes, write failure keeps state, restore-failure paths), cleanup rules, caption text normalization, sticker search/category filtering, edge color sampling, `StoryShareRequest` construction (action, package, extras, URIs, sticker/clipboard switch combinations), permission state transitions.
-- **Robolectric tests:** `StoryShareRequest` → `Intent` mapping (flags, grants), `AtomicFile` persistence, photo normalization with EXIF fixtures (all eight orientations, mirrored front-camera samples).
+- **Robolectric tests:** `StoryShareRequest` → `Intent` mapping (flags, grants), photo normalization pixel output with EXIF fixtures (all eight orientations, mirrored front-camera samples; added in milestone 9; milestone 2 covers the transform logic on the JVM and the pixels on a real device).
 - **Screenshot tests (Roborazzi + Robolectric native graphics):** every screen in its main states, compared visually against the handoff PNGs during review; image exporter output with fixed layers; caption sticker with short, long, max-length, emoji-only, multi-line, and RTL captions.
-- **Instrumented tests:** camera flow with the CameraX test camera; FileProvider URIs readable from another app; gallery export on API 26–28 (legacy path) and 29+ (MediaStore).
+- **Instrumented tests:** camera flow with the CameraX test camera (milestone 9); FileProvider URIs readable from another app; gallery export on API 26–28 (legacy path) and 29+ (MediaStore).
 - **Manual QA matrix:** Instagram installed vs. missing, logged in vs. out, old Instagram version, front vs. back camera (preview matches result), landscape capture, empty caption, each combination of the two caption switches, Android 12 vs. 13+ clipboard behavior, permission denied once / permanently / "Only this time", process death round-trip ("Don't keep activities"), swipe-away fresh launch, low storage, API 26, and a recent API level.
 
 ---
@@ -522,7 +530,7 @@ Implement one milestone at a time. Each must build, include and pass its own tes
 | 6 | Rendering and save | Image exporter (share and gallery targets, OOM fallback); gallery save on API 26–28 and 29+; `exportedRevision` disables duplicate saves (wired to a Save button on the Share screen) |
 | 7 | Caption and Share screens | Caption screen per design with counter and switches; caption sticker renderer meeting the spec; Share screen with accurate centered preview, Save, and New photo; screenshot tests set up |
 | 8 | Instagram share | Stories opens directly with background, edge colors, and caption sticker per the switches; clipboard per the switch; `sharedAt`; availability check and Get Instagram fallback; sticker size tuned on device |
-| 9 | Edge cases and polish | All rows in section 18 handled; cleanup at app start; coach mark; accessibility checklist (section 17) met |
+| 9 | Edge cases and polish | All rows in section 18 handled; cleanup at app start; coach mark; accessibility checklist (section 17) met; Robolectric normalization pixel tests and the instrumented camera test (section 20) |
 | 10 | QA pass | Manual QA matrix from section 20 completed; screens checked against the handoff PNGs; issues fixed |
 
 ---

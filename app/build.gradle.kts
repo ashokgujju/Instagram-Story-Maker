@@ -54,6 +54,13 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        // Apply annotations like Hilt qualifiers on constructor properties to both the parameter and the property.
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")
+    }
+}
+
 androidComponents {
     onVariants { variant ->
         variant.buildConfigFields?.put(
@@ -91,7 +98,16 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.process)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.compose)
+    implementation(libs.androidx.exifinterface)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
