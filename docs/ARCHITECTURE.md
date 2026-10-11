@@ -56,7 +56,7 @@ Do not implement any of the following:
 ## 4. Platform constraints
 
 - **No caption field in the Stories intent.** The intent accepts a background asset, an interactive sticker asset, and background colors only. This is why D1 exists.
-- **Instagram decides sticker placement.** The interactive sticker is placed by Instagram (centered by default); the app cannot set its position. Previews must reflect this (section 14).
+- **Instagram decides sticker placement and size.** The interactive sticker is placed by Instagram (centered by default) and shown at **75% of the Story width whatever its pixel size** (measured on a device in milestone 8: small stickers are enlarged, wide ones shrunk); the app can set neither. Stickers therefore use a fixed canvas width, and previews reflect both (section 14).
 - **Facebook App ID required.** Meta rejects Story shares without a valid App ID passed as the `source_application` extra. The App ID must be registered at developers.facebook.com.
 - **Package visibility (Android 11+).** The manifest must declare a `<queries>` entry for `com.instagram.android`; otherwise Instagram appears not to be installed.
 - **URI permissions.** Assets are shared through a FileProvider. The background URI is covered by the read-permission flag on the intent; the sticker URI is passed as an extra and **must be granted explicitly** to the Instagram package. Missing this grant is the most common cause of the sticker silently not appearing.
@@ -366,7 +366,7 @@ The stickers in the handoff mockups are **placeholders**. The shipped set is the
 ### Discard
 
 - Triggered by Back from the Editor (D12, section 8). Confirmation dialog ("Discard photo?", Discard / Keep editing), then delete the session folder, clear the active session pointer, and return to Capture.
-- "New photo" on the Share screen does the same, confirming ("Discard this photo?") only if the photo hasn't been saved to the gallery. Milestone 8 extends this to "…or shared" once `sharedAt` exists.
+- "New photo" on the Share screen does the same, confirming ("Discard this photo?") only if the photo was neither saved to the gallery nor shared (`sharedAt`).
 - Share files in `cache/share/` are **not** deleted on discard or "New photo"; Instagram may still be reading them. Only the age-based cleanup removes them.
 
 ### File locations
@@ -407,19 +407,19 @@ Abandoning the active session on a fresh launch is handled separately in `MainAc
 ### Share screen (`Share`)
 
 - Top bar: Back, the title "Ready to share", and a **New photo** icon button on the right.
-- Large 9:16 preview: the share render (photo + layers, rendered by the exporter when the screen opens, so it matches the saved and shared image) with, when "Show on photo" is on and the caption is not empty, the **actual caption sticker PNG from the renderer** drawn centered at the scale Instagram will initially show it, plus a small "You can move it in Instagram" hint. Never imitate the sticker with Compose text.
+- Large 9:16 preview: the share render (photo + layers, rendered by the exporter when the screen opens, so it matches the saved and shared image) with, when "Show on photo" is on and the caption is not empty, the **actual caption sticker PNG from the renderer** drawn centered at **75% of the preview width** (Instagram's display width for interactive stickers), so the preview matches the composer, plus a small "You can move it in Instagram" hint. Never imitate the sticker with Compose text.
 - **Share to Instagram Stories** (accent pill, full width), or **Get Instagram** when Instagram is unavailable (section 15).
 - **Save** (secondary pill, full width since "More" is removed): gallery export (section 13).
 - The share background is pre-rendered when the screen opens, so tapping Share only renders the small caption sticker.
 
 ### Caption sticker rendering spec
 
-Implemented by `media/CaptionRenderer.kt`; metrics in `CaptionStickerSpec`, in pixels of a 1080px-wide Story (the design's 290px mockup label scaled ×1080/290):
+Implemented by `media/CaptionRenderer.kt`; metrics in `CaptionStickerSpec`, in pixels of the rendered sticker. Instagram shows every sticker at 75% of the Story width, so the sticker canvas has a **fixed width of 912px** (box up to 864px plus margins) with the box centered: Instagram then scales every caption by the same factor (0.887), and text size stays consistent for short and long captions. The text metrics are the design's caption label (scaled ×1080/290 from the 290px mockup) divided by that factor, so the label appears in Instagram at the design's size:
 
 - Transparent bitmap (PNG when shared), separate from the background image.
-- White rounded box (corner radius 37px) with `#111111` Manrope 700 text at 56px; padding 30px vertical, 52px horizontal; line spacing ×1.1.
-- Box width hugs the text, capped at 864px (80% of the Story width). Final on-screen size in Instagram is tuned on a real device in milestone 8, since Instagram applies its own scaling.
-- Wrapped, center-aligned text (`StaticLayout`, first-strong text direction). If it needs more than 6 lines, the font shrinks in 2px steps down to 40px, so the full caption always fits (a 150-character caption fits in 5 lines at 56px).
+- White rounded box (corner radius 42px) with `#111111` Manrope 700 text at 63px; padding 34px vertical, 59px horizontal; line spacing ×1.1.
+- Box width hugs the text, capped at 864px; the rest of the 912px canvas is transparent.
+- Wrapped, center-aligned text (`StaticLayout`, first-strong text direction). If it needs more than 6 lines, the font shrinks in 2px steps (down to a 28px floor that even 150 of the widest characters fit within), so the full caption always fits; short captions keep the full 63px.
 - 24px transparent margin around the box so its corners are never clipped.
 - Bundled Manrope font (variable font, weight axis set to 700); emoji fall back to the system emoji font.
 - Correct handling of emoji and RTL scripts.
@@ -449,26 +449,27 @@ The intent is described by a plain Kotlin `StoryShareRequest` (action, package, 
 
 ### Share pipeline (order matters)
 
-1. Show a brief "Preparing…" state on the Share button immediately on tap.
-2. Use the pre-rendered background (share target); render it now if it is missing or stale.
-3. Render the caption sticker (if enabled and the caption is not empty).
-4. Write files to `cache/share/` and obtain FileProvider URIs.
-5. Copy the caption to the clipboard (only if "Copy to clipboard" is on and the caption is not empty).
-6. Grant URI permissions.
-7. Record `sharedAt` in the session.
-8. Emit a one-shot launch event; the Activity starts the intent.
+1. Show "Preparing…" on the Share button immediately on tap (repeat taps are ignored).
+2. Reuse the bitmaps already rendered for the preview: the share background and the caption sticker. Nothing is re-rendered, so Instagram receives exactly what the preview shows.
+3. Write them to `cache/share/` (`media/ShareFiles.kt`) as `story_<time>_<random>.jpg` (JPEG quality 90) and `caption_<time>_<random>.png`, new names for every share, and obtain FileProvider URIs (authority `<applicationId>.fileprovider`, `res/xml/share_paths.xml` exposes `share/` only).
+4. Sample the edge colors from the background (`media/EdgeColors.kt`: average of the top and bottom ~2% of rows).
+5. Copy the caption to the clipboard (only if "Copy to clipboard" is on and the normalized caption is not empty).
+6. Emit a one-shot launch event with a `StoryShareRequest`; the screen grants Instagram read access to both URIs and starts the intent (`share/InstagramStories.kt`).
+7. On a successful launch, record `sharedAt` in the session; the button becomes **"Share again"**. If the launch fails, the screen switches to the "Get Instagram" fallback.
+
+If the Facebook App ID is empty (debug builds without `facebook.appId`), Share shows a developer message instead of launching.
 
 ### Availability
 
 - Check whether Instagram can handle the intent each time the Share screen resumes (not only when it is first shown), so installing Instagram via "Get Instagram" and coming back updates the button.
-- If unavailable, the share button becomes "Get Instagram" and opens the Play Store listing for `com.instagram.android`.
+- If unavailable, the share button becomes "Get Instagram" and opens the Play Store listing for `com.instagram.android` (`market://`, falling back to the web URL).
 - Also catch launch failure at tap time (Instagram uninstalled mid-flow) and show the same fallback.
 
 ---
 
 ## 16. Clipboard UX
 
-- Copy only at share time, only when "Copy to clipboard" is on and the caption is not empty. Never copy while the user types.
+- Copy only at share time, only when "Copy to clipboard" is on and the caption is not empty. Never copy while the user types. The normalized caption is copied as plain text (label "Caption").
 - The user is told **before** sharing, via the switch subtitle on the Caption screen. No toast or snackbar is shown during launch (the handoff's toast is dropped), since the app is leaving the foreground and it would not be seen. On Android 13+ the system also shows its own clipboard confirmation.
 - First share only: a one-time coach mark (shown on tap, before launch, dismissed to continue) explaining that the caption sticker can be moved in Instagram and, if copying is on, that the caption is on the clipboard. The "seen" flag is stored in SharedPreferences.
 
@@ -550,7 +551,7 @@ Implement one milestone at a time. Each must build, include and pass its own tes
 | 5 | Editor stickers | Stickers tab with the two-position sheet, search, category chips, grid; place, select, move, pinch, rotate, ✕ remove, and resize/rotate handle; one undo step per gesture |
 | 6 | Rendering and save | Image exporter (share and gallery targets, OOM fallback) matching the editor; gallery save on API 26–28 and 29+; `exportedRevision` disables duplicate saves; Share screen shows the exporter's preview with Save and New photo |
 | 7 | Caption and Share screens | Caption screen per design with counter and switches; caption sticker renderer meeting the spec; Share screen with accurate centered caption preview and "move it in Instagram" hint; Roborazzi screenshot tests for all screens and renderers |
-| 8 | Instagram share | Stories opens directly with background, edge colors, and caption sticker per the switches; clipboard per the switch; `sharedAt`; availability check and Get Instagram fallback; sticker size tuned on device |
+| 8 | Instagram share | Stories opens directly with background, edge colors, and caption sticker per the switches; clipboard per the switch; `sharedAt` and Share again; availability check and Get Instagram fallback; sticker size measured on device (75% display width, fixed canvas) |
 | 9 | Edge cases and polish | All rows in section 18 handled; cleanup at app start; coach mark; accessibility checklist (section 17) met; Robolectric normalization pixel tests and the instrumented camera test (section 20) |
 | 10 | QA pass | Manual QA matrix from section 20 completed; screens checked against the handoff PNGs; issues fixed |
 
@@ -558,5 +559,4 @@ Implement one milestone at a time. Each must build, include and pass its own tes
 
 ## 22. Open questions
 
-- **Facebook App ID:** has a Meta app been registered? Registration can take time and blocks real testing of milestone 8, so start it early.
 - Analytics events, if any.

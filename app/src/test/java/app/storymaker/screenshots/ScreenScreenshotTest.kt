@@ -23,6 +23,7 @@ import app.storymaker.media.CaptionStickerSpec
 import app.storymaker.media.EditorTab
 import app.storymaker.share.CaptionStickerPreview
 import app.storymaker.share.SaveState
+import app.storymaker.share.ShareButtonState
 import app.storymaker.share.ShareContent
 import app.storymaker.stickers.StickerCatalog
 import app.storymaker.ui.theme.StoryMakerTheme
@@ -121,16 +122,48 @@ class ScreenScreenshotTest {
 
     @Test
     fun shareWithoutCaption() = capture("share") {
-        ShareContent(preview = photo, captionSticker = null, saveState = SaveState.Idle, onBack = {}, onNewPhoto = {}, onSave = {})
+        ShareContent(
+            preview = photo,
+            captionSticker = null,
+            saveState = SaveState.Idle,
+            shareButton = ShareButtonState.Ready,
+            onBack = {},
+            onNewPhoto = {},
+            onShare = {},
+            onSave = {},
+        )
+    }
+
+    @Test
+    fun shareInstagramMissing() = capture("share_get_instagram") {
+        ShareContent(
+            preview = photo,
+            captionSticker = null,
+            saveState = SaveState.Idle,
+            shareButton = ShareButtonState.InstagramMissing,
+            onBack = {},
+            onNewPhoto = {},
+            onShare = {},
+            onSave = {},
+        )
     }
 
     @Test
     fun shareWithCaption() {
         val renderer = CaptionRenderer(ApplicationProvider.getApplicationContext(), Dispatchers.Unconfined)
         val sticker = checkNotNull(renderer.renderNow("Launch day with the @team #shipit"))
-        val preview = CaptionStickerPreview(sticker.asImageBitmap(), sticker.width.toFloat() / CaptionStickerSpec.STORY_WIDTH)
+        val preview = CaptionStickerPreview(sticker.asImageBitmap(), CaptionStickerSpec.INSTAGRAM_DISPLAY_WIDTH_FRACTION)
         capture("share_caption") {
-            ShareContent(preview = photo, captionSticker = preview, saveState = SaveState.Saved, onBack = {}, onNewPhoto = {}, onSave = {})
+            ShareContent(
+                preview = photo,
+                captionSticker = preview,
+                saveState = SaveState.Saved,
+                shareButton = ShareButtonState.SharedBefore,
+                onBack = {},
+                onNewPhoto = {},
+                onShare = {},
+                onSave = {},
+            )
         }
     }
 }

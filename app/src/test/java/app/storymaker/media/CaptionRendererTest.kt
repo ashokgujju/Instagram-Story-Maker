@@ -28,9 +28,19 @@ class CaptionRendererTest {
     }
 
     @Test
-    fun shortCaption_hugsItsText() {
+    fun everySticker_hasTheFixedCanvasWidth() {
+        assertEquals(CaptionStickerSpec.CANVAS_WIDTH, renderer.renderNow("Done!")!!.width)
+        assertEquals(CaptionStickerSpec.CANVAS_WIDTH, renderer.renderNow("word ".repeat(30))!!.width)
+    }
+
+    @Test
+    fun shortCaption_boxHugsItsTextOnTransparentCanvas() {
         val bitmap = renderer.renderNow("Done!")!!
-        assertTrue("short caption should be narrow, was ${bitmap.width}", bitmap.width < maxBitmapWidth / 2)
+        val middle = bitmap.height / 2
+        // The box is centered and narrow: the canvas is transparent well inside its left and right edges.
+        assertEquals(Color.TRANSPARENT, bitmap.getPixel(bitmap.width / 4, middle))
+        assertEquals(Color.TRANSPARENT, bitmap.getPixel(bitmap.width * 3 / 4, middle))
+        assertEquals(Color.WHITE, bitmap.getPixel(bitmap.width / 2, (CaptionStickerSpec.MARGIN + 4).toInt()))
     }
 
     @Test
@@ -40,17 +50,28 @@ class CaptionRendererTest {
     }
 
     @Test
-    fun maxLengthCaption_fitsWithinSixLines() {
-        val bitmap = renderer.renderNow("a".repeat(CAPTION_MAX_LENGTH))!!
-        // Six lines of the minimum text size plus padding and margins is the tallest a sticker can get.
-        val maxHeight = 6 * CaptionStickerSpec.TEXT_SIZE * 1.6f + 2 * (CaptionStickerSpec.PADDING_VERTICAL + CaptionStickerSpec.MARGIN)
-        assertTrue("height ${bitmap.height} exceeds $maxHeight", bitmap.height <= maxHeight)
-        assertTrue(bitmap.width <= maxBitmapWidth + 1)
+    fun maxLengthCaptions_fitWithinSixLines() {
+        val worstCases = listOf(
+            "a".repeat(CAPTION_MAX_LENGTH),
+            List(15) { "a".repeat(10) }.joinToString(" ").take(CAPTION_MAX_LENGTH),
+            List(30) { "WWWW" }.joinToString(" ").take(CAPTION_MAX_LENGTH),
+            "SHIPPED THE NEW ONBOARDING FLOW TODAY WITH THE WHOLE TEAM, HUGE THANKS TO EVERYONE WHO REVIEWED, TESTED AND CHEERED US ON THROUGH THE LAST SPRINT!!".take(CAPTION_MAX_LENGTH),
+        )
+        for (caption in worstCases) {
+            val layout = renderer.layoutFor(caption)!!
+            assertTrue("${layout.lineCount} lines for \"$caption\"", layout.lineCount <= CaptionStickerSpec.MAX_LINES)
+            assertTrue(renderer.renderNow(caption)!!.width <= maxBitmapWidth + 1)
+        }
     }
 
     @Test
-    fun margin_isTransparent_andBoxIsWhite() {
-        val bitmap = renderer.renderNow("Hello")!!
+    fun shortCaption_keepsFullTextSize() {
+        assertEquals(CaptionStickerSpec.TEXT_SIZE, renderer.layoutFor("Done!")!!.paint.textSize)
+    }
+
+    @Test
+    fun margin_isTransparent_andWideBoxIsWhite() {
+        val bitmap = renderer.renderNow("word ".repeat(30))!!
         assertEquals(Color.TRANSPARENT, bitmap.getPixel(0, 0))
         val inset = (CaptionStickerSpec.MARGIN + CaptionStickerSpec.CORNER_RADIUS).toInt()
         assertEquals(Color.WHITE, bitmap.getPixel(inset, bitmap.height / 2))

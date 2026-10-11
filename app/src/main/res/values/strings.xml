@@ -62,6 +62,12 @@
 
     <string name="share_title">Ready to share</string>
     <string name="share_to_stories">Share to Instagram Stories</string>
+    <string name="share_again">Share again</string>
+    <string name="share_preparing">Preparing…</string>
+    <string name="share_get_instagram">Get Instagram</string>
+    <string name="message_instagram_not_installed">Instagram isn\'t installed</string>
+    <string name="message_share_failed">Couldn\'t prepare the share</string>
+    <string name="message_missing_facebook_app_id">Facebook App ID is missing (developer setup: facebook.appId)</string>
     <string name="share_move_hint">You can move it in Instagram</string>
     <string name="share_saving">Saving…</string>
     <string name="share_saved">Saved</string>

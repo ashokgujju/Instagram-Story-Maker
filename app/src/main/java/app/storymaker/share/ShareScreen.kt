@@ -3,6 +3,7 @@ package app.storymaker.share
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -33,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.storymaker.R
 import app.storymaker.ui.components.AccentButton
@@ -44,8 +46,7 @@ import app.storymaker.ui.theme.Muted
 import app.storymaker.ui.theme.StoryMakerTheme
 
 /**
- * Final preview (design: `Share`) with Share to Instagram Stories (milestone 8), Save to gallery,
- * and New photo. The preview is rendered by the exporter, so it matches the saved image.
+ * Final preview (design: `Share`) with Share to Instagram Stories, Save to gallery, and New photo. The preview is rendered by the exporter, so it matches the saved image.
  *
  * @param onDiscarded the session was deleted (New photo); return to the camera
  * @param onPhotoUnavailable the session's photo is gone
@@ -68,6 +69,10 @@ fun ShareScreen(
     val failedMessage = stringResource(R.string.message_save_photo_failed)
     val editsResetMessage = stringResource(R.string.message_edits_reset)
     val permissionMessage = stringResource(R.string.message_storage_permission)
+    val notInstalledMessage = stringResource(R.string.message_instagram_not_installed)
+    val shareFailedMessage = stringResource(R.string.message_share_failed)
+    val missingAppIdMessage = stringResource(R.string.message_missing_facebook_app_id)
+    val activity = LocalActivity.current
     var confirmDiscard by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
@@ -78,8 +83,20 @@ fun ShareScreen(
                 ShareEvent.SavedToGallery -> currentOnMessage(savedMessage)
                 ShareEvent.SaveFailed -> currentOnMessage(failedMessage)
                 ShareEvent.Discarded -> currentOnDiscarded()
+                is ShareEvent.Launch -> {
+                    val launched = activity != null && InstagramStories.launch(activity, event.request)
+                    if (launched) viewModel.onLaunched() else viewModel.onLaunchFailed()
+                }
+                ShareEvent.InstagramNotInstalled -> currentOnMessage(notInstalledMessage)
+                ShareEvent.ShareFailed -> currentOnMessage(shareFailedMessage)
+                ShareEvent.MissingFacebookAppId -> currentOnMessage(missingAppIdMessage)
             }
         }
+    }
+    // Instagram may be installed or removed while the app is in the background (e.g. via "Get Instagram").
+    LifecycleResumeEffect(viewModel) {
+        viewModel.refreshAvailability()
+        onPauseOrDispose {}
     }
 
     // API 26–28 need the storage permission to write to the public Pictures folder.
@@ -100,8 +117,12 @@ fun ShareScreen(
         preview = uiState.preview,
         captionSticker = uiState.captionSticker,
         saveState = uiState.saveState,
+        shareButton = uiState.shareButton,
         onBack = onBack,
         onNewPhoto = onNewPhoto,
+        onShare = {
+            if (uiState.shareButton == ShareButtonState.InstagramMissing) InstagramStories.openPlayStore(context) else viewModel.share()
+        },
         onSave = onSave,
     )
 
@@ -130,8 +151,10 @@ internal fun ShareContent(
     preview: ImageBitmap?,
     captionSticker: CaptionStickerPreview?,
     saveState: SaveState,
+    shareButton: ShareButtonState,
     onBack: () -> Unit,
     onNewPhoto: () -> Unit,
+    onShare: () -> Unit,
     onSave: () -> Unit,
 ) {
     StoryScreen {
@@ -186,9 +209,17 @@ internal fun ShareContent(
             )
         }
         AccentButton(
-            text = stringResource(R.string.share_to_stories),
-            onClick = {},
-            enabled = false,
+            text = stringResource(
+                when (shareButton) {
+                    ShareButtonState.Ready -> R.string.share_to_stories
+                    ShareButtonState.Preparing -> R.string.share_preparing
+                    ShareButtonState.SharedBefore -> R.string.share_again
+                    ShareButtonState.InstagramMissing -> R.string.share_get_instagram
+                },
+            ),
+            icon = if (shareButton == ShareButtonState.InstagramMissing) null else R.drawable.ic_add_circle,
+            onClick = onShare,
+            enabled = preview != null && shareButton != ShareButtonState.Preparing,
             modifier = Modifier.fillMaxWidth(),
         )
         SecondaryButton(
@@ -215,6 +246,15 @@ internal fun ShareContent(
 @Composable
 private fun ShareContentPreview() {
     StoryMakerTheme {
-        ShareContent(preview = null, captionSticker = null, saveState = SaveState.Idle, onBack = {}, onNewPhoto = {}, onSave = {})
+        ShareContent(
+            preview = null,
+            captionSticker = null,
+            saveState = SaveState.Idle,
+            shareButton = ShareButtonState.Ready,
+            onBack = {},
+            onNewPhoto = {},
+            onShare = {},
+            onSave = {},
+        )
     }
 }
