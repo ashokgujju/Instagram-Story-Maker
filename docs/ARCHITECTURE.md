@@ -71,13 +71,13 @@ Do not implement any of the following:
 - Single Activity, Navigation Compose with type-safe routes (kotlinx.serialization)
 - kotlinx.serialization JSON for the session snapshot; `androidx.core.util.AtomicFile` for atomic writes
 - MVVM with unidirectional state (immutable UI state, one-shot events via a channel)
-- Hilt (via KSP) for dependency injection. **Verify in milestone 1** that Hilt + KSP work with AGP 9 built-in Kotlin and the configuration cache. If they don't, fall back to manual DI (a single `AppContainer` created in the `Application`) and update this document.
+- Hilt (via KSP) for dependency injection. Verified in milestone 1: Hilt 2.60.1 + KSP 2.3.12 work with AGP 9.4 built-in Kotlin (2.2.10) and the configuration cache.
 - Coroutines and Flow
 - CameraX (core, camera2, lifecycle, view or compose viewfinder)
 - AndroidX ExifInterface
 - FileProvider and MediaStore for file sharing and gallery export
-- Manrope bundled as font resources (`res/font`, weights 400/600/700/800), used by both the Compose theme and the caption renderer
-- Material Symbols Outlined icons (via the Compose material icons extended artifact, or individual vector drawables for only the icons used)
+- Manrope bundled as a single variable font (`res/font/manrope.ttf`, OFL license in `docs/licenses/`); each weight selects a point on the weight axis. Used by both the Compose theme and the caption renderer
+- Material Symbols Outlined icons as individual vector drawables (`res/drawable/ic_*.xml`, tint attribute removed so Compose `Icon` tints them), added only as needed
 - `BuildConfig` generation enabled (`buildFeatures { buildConfig = true }`; AGP 9 disables it by default) for the Facebook App ID
 - Roborazzi + Robolectric (native graphics mode) for screenshot tests (verify AGP 9 compatibility when first added)
 

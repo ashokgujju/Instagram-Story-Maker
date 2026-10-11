@@ -44,11 +44,11 @@ Use the Gradle wrapper from the repo root:
 ./gradlew lint                          # Android lint
 ./gradlew test                          # JVM unit tests (app/src/test)
 ./gradlew connectedAndroidTest          # instrumented tests (app/src/androidTest), needs a device
-./gradlew :app:testDebugUnitTest --tests "app.storymaker.ExampleUnitTest"            # single test class
-./gradlew :app:testDebugUnitTest --tests "app.storymaker.ExampleUnitTest.addition_isCorrect"  # single test method
+./gradlew :app:testDebugUnitTest --tests "app.storymaker.navigation.RoutesTest"     # single test class
+./gradlew :app:testDebugUnitTest --tests "app.storymaker.navigation.RoutesTest.startRoute_withCameraPermission_isCapture"  # single test method
 ```
 
-`local.properties` holds the local SDK path and the `facebook.appId` used for Instagram sharing; it is gitignored and not portable.
+`local.properties` holds the local SDK path and the `facebook.appId` used for Instagram sharing; it is gitignored and not portable. The App ID can also come from `-Pfacebook.appId=…` or the `FACEBOOK_APP_ID` environment variable. Release builds (and therefore `./gradlew build`) fail without it; debug builds allow it to be empty.
 
 ## Build setup notes
 
@@ -63,4 +63,4 @@ Use the Gradle wrapper from the repo root:
 
 ## Theming
 
-The app uses a **fixed dark theme** built from the handoff's design tokens with the bundled **Manrope** font (architecture doc section 7): no Material You dynamic color and no light theme. The template's `ui/theme/Theme.kt` (`StoryMakerTheme`, currently dynamic color with light/dark fallbacks) is replaced accordingly in milestone 1. The accent `#FF5A36` is reserved for the "Share to Instagram Stories" button. Touch targets are at least 48dp even where the mockups show 44px. Wrap any new screen/preview in `StoryMakerTheme`. `MainActivity` calls `enableEdgeToEdge()`, so screens must handle window insets (e.g. via `Scaffold`'s `innerPadding`).
+The app uses a **fixed dark theme** built from the handoff's design tokens with the bundled **Manrope** font (architecture doc section 7): no Material You dynamic color and no light theme. `ui/theme/` holds the tokens (`Color.kt`), Manrope typography (`Type.kt`), and `StoryMakerTheme` with the fixed color scheme and shapes (`Theme.kt`). Shared pill buttons, round icon buttons, the top bar, and the `StoryScreen` layout (background, content color, insets) live in `ui/components/`; build screens from these instead of raw Material components. The accent `#FF5A36` is reserved for the "Share to Instagram Stories" button. Touch targets are at least 48dp even where the mockups show 44px. Wrap any new screen/preview in `StoryMakerTheme`. `MainActivity` calls `enableEdgeToEdge()`, so screens must handle window insets (e.g. via `Scaffold`'s `innerPadding`).
