@@ -50,6 +50,7 @@ fun StoryTopBar(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     title: String? = null,
+    backContentDescription: String = stringResource(R.string.action_back),
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
@@ -59,7 +60,7 @@ fun StoryTopBar(
     ) {
         RoundIconButton(
             icon = R.drawable.ic_arrow_back,
-            contentDescription = stringResource(R.string.action_back),
+            contentDescription = backContentDescription,
             onClick = onBack,
         )
         Text(

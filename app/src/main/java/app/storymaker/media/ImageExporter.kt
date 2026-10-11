@@ -29,6 +29,9 @@ enum class ExportTarget(val maxLongSide: Int, val jpegQuality: Int) {
 
     /** Gallery copy at full capture resolution, capped to bound memory use. */
     Gallery(maxLongSide = 4096, jpegQuality = 95),
+
+    /** On-screen thumbnail (Caption screen); never saved. */
+    Thumbnail(maxLongSide = 720, jpegQuality = 85),
 }
 
 /** Size of an export of a [width] × [height] photo whose long side is capped at [maxLongSide]. */

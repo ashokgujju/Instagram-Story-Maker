@@ -137,7 +137,7 @@ fun EditorScreen(
     }
 }
 
-private class EditorActions(
+internal class EditorActions(
     val onBack: () -> Unit,
     val onNext: () -> Unit,
     val onUndo: () -> Unit,
@@ -153,7 +153,7 @@ private class EditorActions(
 )
 
 @Composable
-private fun EditorContent(uiState: EditorUiState, actions: EditorActions) {
+internal fun EditorContent(uiState: EditorUiState, actions: EditorActions) {
     var rootHeight by remember { mutableFloatStateOf(0f) }
     var controlsTop by remember { mutableFloatStateOf(0f) }
     val stickersTab = uiState.tab == EditorTab.Stickers

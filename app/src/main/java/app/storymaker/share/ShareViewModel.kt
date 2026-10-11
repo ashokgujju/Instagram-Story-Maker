@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.storymaker.media.CaptionRenderer
+import app.storymaker.media.CaptionStickerSpec
 import app.storymaker.media.ExportException
 import app.storymaker.media.ExportTarget
 import app.storymaker.media.GallerySaver
@@ -30,11 +32,16 @@ enum class SaveState { Idle, Saving, Saved }
 data class ShareUiState(
     /** The share render (photo + drawings + stickers), or null while rendering. */
     val preview: ImageBitmap? = null,
+    /** The caption sticker exactly as Instagram receives it, or null when it isn't shown. */
+    val captionSticker: CaptionStickerPreview? = null,
     val saveState: SaveState = SaveState.Idle,
 ) {
     /** Leaving would lose a photo that was never saved, so ask first. */
     val needsDiscardConfirmation: Boolean get() = saveState != SaveState.Saved
 }
+
+/** The rendered caption sticker and its width as a fraction of the Story width. */
+data class CaptionStickerPreview(val image: ImageBitmap, val widthFraction: Float)
 
 sealed interface ShareEvent {
     data object PhotoUnavailable : ShareEvent
@@ -50,18 +57,26 @@ class ShareViewModel @Inject constructor(
     private val sessionStore: SessionStore,
     private val exporter: ImageExporter,
     private val gallerySaver: GallerySaver,
+    private val captionRenderer: CaptionRenderer,
 ) : ViewModel() {
 
     // Navigation stores route properties under their names (ShareRoute.sessionId).
     private val sessionId: String = checkNotNull(savedStateHandle[SESSION_ID_ARG])
 
     private val preview = MutableStateFlow<ImageBitmap?>(null)
+    private val captionSticker = MutableStateFlow<CaptionStickerPreview?>(null)
     private val saving = MutableStateFlow(false)
 
-    val uiState: StateFlow<ShareUiState> = combine(preview, saving, sessionStore.state) { preview, saving, snapshot ->
+    val uiState: StateFlow<ShareUiState> = combine(
+        preview,
+        captionSticker,
+        saving,
+        sessionStore.state,
+    ) { preview, captionSticker, saving, snapshot ->
         val session = snapshot?.takeIf { it.sessionId == sessionId }
         ShareUiState(
             preview = preview,
+            captionSticker = captionSticker,
             saveState = when {
                 saving -> SaveState.Saving
                 session?.isSavedToGallery == true -> SaveState.Saved
@@ -85,6 +100,14 @@ class ShareViewModel @Inject constructor(
                     result.snapshot
                 }
                 is LoadResult.Restored -> result.snapshot
+            }
+            if (snapshot.showOnPhoto) {
+                captionRenderer.render(snapshot.caption)?.let { sticker ->
+                    captionSticker.value = CaptionStickerPreview(
+                        image = sticker.asImageBitmap(),
+                        widthFraction = sticker.width.toFloat() / CaptionStickerSpec.STORY_WIDTH,
+                    )
+                }
             }
             try {
                 preview.value = exporter.render(snapshot, sessionStore.captureFile(sessionId), ExportTarget.Share)

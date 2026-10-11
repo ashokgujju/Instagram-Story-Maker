@@ -40,6 +40,7 @@ import app.storymaker.ui.components.RoundIconButton
 import app.storymaker.ui.components.SecondaryButton
 import app.storymaker.ui.components.StoryScreen
 import app.storymaker.ui.components.StoryTopBar
+import app.storymaker.ui.theme.Muted
 import app.storymaker.ui.theme.StoryMakerTheme
 
 /**
@@ -97,6 +98,7 @@ fun ShareScreen(
 
     ShareContent(
         preview = uiState.preview,
+        captionSticker = uiState.captionSticker,
         saveState = uiState.saveState,
         onBack = onBack,
         onNewPhoto = onNewPhoto,
@@ -124,8 +126,9 @@ fun ShareScreen(
 }
 
 @Composable
-private fun ShareContent(
+internal fun ShareContent(
     preview: ImageBitmap?,
+    captionSticker: CaptionStickerPreview?,
     saveState: SaveState,
     onBack: () -> Unit,
     onNewPhoto: () -> Unit,
@@ -162,8 +165,25 @@ private fun ShareContent(
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize(),
                     )
+                    // Centered, where Instagram places the sticker, at its size on a 1080px-wide Story.
+                    captionSticker?.let {
+                        Image(
+                            bitmap = it.image,
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxWidth(it.widthFraction),
+                        )
+                    }
                 }
             }
+        }
+        if (captionSticker != null) {
+            Text(
+                text = stringResource(R.string.share_move_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Muted,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
         }
         AccentButton(
             text = stringResource(R.string.share_to_stories),
@@ -195,6 +215,6 @@ private fun ShareContent(
 @Composable
 private fun ShareContentPreview() {
     StoryMakerTheme {
-        ShareContent(preview = null, saveState = SaveState.Idle, onBack = {}, onNewPhoto = {}, onSave = {})
+        ShareContent(preview = null, captionSticker = null, saveState = SaveState.Idle, onBack = {}, onNewPhoto = {}, onSave = {})
     }
 }

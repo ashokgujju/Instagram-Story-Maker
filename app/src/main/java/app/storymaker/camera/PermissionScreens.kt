@@ -73,7 +73,7 @@ fun PermissionDeniedScreen(
 }
 
 @Composable
-private fun PermissionContent(
+internal fun PermissionContent(
     onContinue: () -> Unit,
     onNotNow: () -> Unit,
     onClose: () -> Unit,
@@ -89,7 +89,7 @@ private fun PermissionContent(
 )
 
 @Composable
-private fun PermissionDeniedContent(
+internal fun PermissionDeniedContent(
     onOpenSettings: () -> Unit,
     onNotNow: () -> Unit,
     onClose: () -> Unit,

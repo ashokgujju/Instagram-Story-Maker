@@ -92,7 +92,7 @@ fun CaptureScreen(
 }
 
 @Composable
-private fun CaptureContent(
+internal fun CaptureContent(
     uiState: CaptureUiState,
     onClose: () -> Unit,
     onFlash: () -> Unit,

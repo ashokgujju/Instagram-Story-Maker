@@ -79,7 +79,7 @@ Do not implement any of the following:
 - Manrope bundled as a single variable font (`res/font/manrope.ttf`, OFL license in `docs/licenses/`); each weight selects a point on the weight axis. Used by both the Compose theme and the caption renderer
 - Material Symbols Outlined icons as individual vector drawables (`res/drawable/ic_*.xml`, tint attribute removed so Compose `Icon` tints them), added only as needed
 - `BuildConfig` generation enabled (`buildFeatures { buildConfig = true }`; AGP 9 disables it by default) for the Facebook App ID
-- Roborazzi + Robolectric (native graphics mode) for screenshot tests (verify AGP 9 compatibility when first added)
+- Roborazzi (Gradle plugin, verified with AGP 9 and the configuration cache in milestone 7) + Robolectric 4.17 (native graphics mode, tests run as SDK 36) for screenshot tests
 
 No WorkManager: cleanup runs at app start (section 13).
 
@@ -399,7 +399,9 @@ Abandoning the active session on a fresh launch is handled separately in `MainAc
   - **Show on photo** (default on). Subtitle: "Adds the caption as text on your story".
   - **Copy to clipboard** (default off). Subtitle: "Paste it in Instagram if you'd rather type it there". When the caption contains @mentions or #hashtags, the subtitle adds that pasting makes them tappable.
 - **Continue** (white pill) goes to Share. An empty caption is allowed.
-- Caption text and switch states are stored in the session as the user changes them.
+- Caption text and switch states are stored in the session as the user changes them (not a layer change, so the gallery-saved state is unaffected). The field is cut to 150 characters (Unicode code points, so an emoji counts once and is never split); the counter is announced to screen readers within 10 characters of the limit.
+- The content above Continue scrolls, so the field and switches stay reachable with the keyboard open; Continue stays pinned above the keyboard.
+- Caption normalization (`media/CaptionText.kt`), applied before rendering and before the clipboard copy: trim, and collapse runs of blank lines to one. A whitespace-only caption counts as empty.
 - Before rendering: trim leading/trailing whitespace and collapse excessive blank lines.
 
 ### Share screen (`Share`)
@@ -412,12 +414,14 @@ Abandoning the active session on a fresh launch is handled separately in `MainAc
 
 ### Caption sticker rendering spec
 
-- Transparent PNG, separate from the background image.
-- Style follows the design's caption label: white rounded label, `#111111` text, Manrope 700, generous horizontal padding.
-- Width capped at roughly 80% of a 1080px-wide Story; keep the asset modest so it doesn't land oversized in Instagram. Final sizing is tuned on a real device in milestone 8, since Instagram applies its own scaling.
-- Bundled Manrope font (not a system font) for consistent appearance on all devices; emoji fall back to the system emoji font.
-- Wrapped, center-aligned text (`StaticLayout`) with a maximum line count consistent with the character limit.
-- Transparent padding around the label so shadows and corners are not clipped.
+Implemented by `media/CaptionRenderer.kt`; metrics in `CaptionStickerSpec`, in pixels of a 1080px-wide Story (the design's 290px mockup label scaled ×1080/290):
+
+- Transparent bitmap (PNG when shared), separate from the background image.
+- White rounded box (corner radius 37px) with `#111111` Manrope 700 text at 56px; padding 30px vertical, 52px horizontal; line spacing ×1.1.
+- Box width hugs the text, capped at 864px (80% of the Story width). Final on-screen size in Instagram is tuned on a real device in milestone 8, since Instagram applies its own scaling.
+- Wrapped, center-aligned text (`StaticLayout`, first-strong text direction). If it needs more than 6 lines, the font shrinks in 2px steps down to 40px, so the full caption always fits (a 150-character caption fits in 5 lines at 56px).
+- 24px transparent margin around the box so its corners are never clipped.
+- Bundled Manrope font (variable font, weight axis set to 700); emoji fall back to the system emoji font.
 - Correct handling of emoji and RTL scripts.
 - Unique filename per share so Instagram never shows a stale cached sticker.
 
@@ -527,7 +531,7 @@ Tests are written in the milestone that introduces the code under test (section 
 
 - **Unit tests (JVM):** editor reducer (add/remove layers, transforms, undo/redo, 50-entry cap), normalized coordinate mapping and brush-size conversion, snapshot serialization round-trip and version handling, `SessionStore` (serialized writes, write failure keeps state, restore-failure paths), cleanup rules, caption text normalization, sticker search/category filtering, edge color sampling, `StoryShareRequest` construction (action, package, extras, URIs, sticker/clipboard switch combinations), permission state transitions.
 - **Robolectric tests:** `StoryShareRequest` → `Intent` mapping (flags, grants), photo normalization pixel output with EXIF fixtures (all eight orientations, mirrored front-camera samples; added in milestone 9; milestone 2 covers the transform logic on the JVM and the pixels on a real device).
-- **Screenshot tests (Roborazzi + Robolectric native graphics):** every screen in its main states, compared visually against the handoff PNGs during review; image exporter output with fixed layers; caption sticker with short, long, max-length, emoji-only, multi-line, and RTL captions.
+- **Screenshot tests (Roborazzi + Robolectric native graphics):** every screen in its main states (`screenshots/ScreenScreenshotTest`), compared visually against the handoff PNGs during review; image exporter output with fixed layers and caption sticker with short, long, max-length, emoji-only, multi-line, and RTL captions (`screenshots/RenderScreenshotTest`). Reference images are committed in `app/src/test/screenshots/`. `./gradlew recordRoborazziDebug` records them, `./gradlew verifyRoborazziDebug` compares against them (and fails on any difference); a plain `test` run does not compare. Tests run as SDK 36 with a plain `Application` (no Hilt) and render the screens' `internal` `…Content` composables directly. The test JVM needs `--add-opens=java.base/jdk.internal.access=ALL-UNNAMED` (set in `app/build.gradle.kts`) for Robolectric's SDK 36 sandbox on recent JDKs.
 - **Instrumented tests:** camera flow with the CameraX test camera (milestone 9); FileProvider URIs readable from another app; gallery export on API 26–28 (legacy path) and 29+ (MediaStore). `GallerySaverTest` (API 29+ path) runs on the test phone; the API 26–28 path is not yet verified on a device.
 - **Manual QA matrix:** Instagram installed vs. missing, logged in vs. out, old Instagram version, front vs. back camera (preview matches result), landscape capture, empty caption, each combination of the two caption switches, Android 12 vs. 13+ clipboard behavior, permission denied once / permanently / "Only this time", process death round-trip ("Don't keep activities"), swipe-away fresh launch, low storage, API 26, and a recent API level.
 
@@ -545,7 +549,7 @@ Implement one milestone at a time. Each must build, include and pass its own tes
 | 4 | Editor drawing | Editor layout and Draw tab per design; layer model, reducer, freehand drawing, swatches, brush slider, undo/redo with cap, edits persisted through `SessionStore` and surviving process death; Back → discard confirmation |
 | 5 | Editor stickers | Stickers tab with the two-position sheet, search, category chips, grid; place, select, move, pinch, rotate, ✕ remove, and resize/rotate handle; one undo step per gesture |
 | 6 | Rendering and save | Image exporter (share and gallery targets, OOM fallback) matching the editor; gallery save on API 26–28 and 29+; `exportedRevision` disables duplicate saves; Share screen shows the exporter's preview with Save and New photo |
-| 7 | Caption and Share screens | Caption screen per design with counter and switches; caption sticker renderer meeting the spec; Share screen with accurate centered preview, Save, and New photo; screenshot tests set up |
+| 7 | Caption and Share screens | Caption screen per design with counter and switches; caption sticker renderer meeting the spec; Share screen with accurate centered caption preview and "move it in Instagram" hint; Roborazzi screenshot tests for all screens and renderers |
 | 8 | Instagram share | Stories opens directly with background, edge colors, and caption sticker per the switches; clipboard per the switch; `sharedAt`; availability check and Get Instagram fallback; sticker size tuned on device |
 | 9 | Edge cases and polish | All rows in section 18 handled; cleanup at app start; coach mark; accessibility checklist (section 17) met; Robolectric normalization pixel tests and the instrumented camera test (section 20) |
 | 10 | QA pass | Manual QA matrix from section 20 completed; screens checked against the handoff PNGs; issues fixed |

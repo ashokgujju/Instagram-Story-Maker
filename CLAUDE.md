@@ -43,7 +43,9 @@ Use the Gradle wrapper from the repo root:
 ./gradlew installDebug                  # build + install on connected device/emulator
 ./gradlew lint                          # Android lint
 ./gradlew test                          # JVM unit tests (app/src/test)
-./gradlew connectedAndroidTest          # instrumented tests (app/src/androidTest), needs a device
+./gradlew connectedAndroidTest          # instrumented tests (app/src/androidTest), needs a device (uninstalls the app afterwards)
+./gradlew recordRoborazziDebug          # re-record screenshot references (app/src/test/screenshots) after intended UI changes
+./gradlew verifyRoborazziDebug          # compare screenshots against the references; fails on any difference
 ./gradlew :app:testDebugUnitTest --tests "app.storymaker.navigation.RoutesTest"     # single test class
 ./gradlew :app:testDebugUnitTest --tests "app.storymaker.navigation.RoutesTest.startRoute_withCameraPermission_isCapture"  # single test method
 ```

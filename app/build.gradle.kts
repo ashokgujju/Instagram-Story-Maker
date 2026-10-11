@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.roborazzi)
 }
 
 // Facebook App ID for the Instagram Stories intent (`source_application`).
@@ -51,6 +52,17 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        // Robolectric screenshot tests need the merged resources (fonts, drawables, strings).
+        unitTests.isIncludeAndroidResources = true
+        // Robolectric's SDK 36 sandbox uses JDK internals that recent JDKs no longer open by default.
+        unitTests.all { it.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED") }
+    }
+}
+
+roborazzi {
+    // Reference screenshots are committed; record with recordRoborazziDebug, check with verifyRoborazziDebug.
+    outputDir.set(layout.projectDirectory.dir("src/test/screenshots"))
 }
 
 kotlin {
@@ -107,6 +119,12 @@ dependencies {
     implementation(libs.androidx.exifinterface)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -50,9 +50,19 @@
     <string name="color_violet">Violet</string>
 
     <string name="caption_title">Caption</string>
+    <string name="caption_back_to_editing">Back to editing</string>
+    <string name="caption_label">Your caption</string>
+    <string name="caption_placeholder">Write a caption…</string>
+    <string name="caption_counter">%1$d / %2$d</string>
+    <string name="caption_show_on_photo">Show on photo</string>
+    <string name="caption_show_on_photo_subtitle">Adds the caption as text on your story</string>
+    <string name="caption_copy">Copy to clipboard</string>
+    <string name="caption_copy_subtitle">Paste it in Instagram if you\'d rather type it there</string>
+    <string name="caption_copy_subtitle_mentions">Paste it in Instagram if you\'d rather type it there. Pasting makes @mentions and #hashtags tappable.</string>
 
     <string name="share_title">Ready to share</string>
     <string name="share_to_stories">Share to Instagram Stories</string>
+    <string name="share_move_hint">You can move it in Instagram</string>
     <string name="share_saving">Saving…</string>
     <string name="share_saved">Saved</string>
     <string name="share_discard_title">Discard this photo?</string>
@@ -61,4 +71,8 @@
     <string name="message_saved_to_gallery">Saved to gallery</string>
     <string name="message_save_photo_failed">Couldn\'t save the photo</string>
     <string name="message_storage_permission">Allow storage access to save photos</string>
+    <plurals name="caption_counter_description">
+        <item quantity="one">%1$d of %2$d character</item>
+        <item quantity="other">%1$d of %2$d characters</item>
+    </plurals>
 </resources>

@@ -120,9 +120,17 @@ fun StoryMakerNavHost(
             }
             composable<CaptionRoute> { entry ->
                 val route = entry.toRoute<CaptionRoute>()
+                val photoNotRestoredMessage = stringResource(R.string.message_photo_not_restored)
                 CaptionScreen(
                     onBack = { navController.popBackStack() },
                     onContinue = dropUnlessResumed { navController.navigate(ShareRoute(route.sessionId)) },
+                    onPhotoUnavailable = {
+                        navController.navigate(CaptureRoute) {
+                            popUpTo<CaptureRoute> { inclusive = true }
+                        }
+                        showMessage(photoNotRestoredMessage)
+                    },
+                    onMessage = showMessage,
                 )
             }
             composable<ShareRoute> {
