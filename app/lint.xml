@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Generated sticker artwork (tools/stickers/extract_stickers.py) has legitimately long path data. -->
+    <issue id="VectorPath">
+        <ignore path="src/main/res/drawable/sticker_*.xml" />
+    </issue>
+</lint>

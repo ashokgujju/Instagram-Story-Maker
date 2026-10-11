@@ -318,14 +318,20 @@ A single Compose canvas draws the photo fitted to the available area (letterboxe
 
 The stickers in the handoff mockups are **placeholders**. The shipped set is the Figma "Project Status Stickers" file (https://www.figma.com/design/Ul8AkOtTiNQa6uHNumE0xI/Project-Status-Stickers); the sheet layout (search, chips, 4-column grid, tile style) follows the design.
 
-1. In Figma, convert any text in the stickers to outlines before exporting (VectorDrawable cannot reference fonts).
-2. Export each sticker as SVG.
-3. Convert to Android VectorDrawable. Stickers that use effects VectorDrawable cannot express (drop shadows, blurs, blend modes, complex masks) are exported as WebP at 1024px on the long side instead, so they stay sharp when enlarged on a 4096px gallery render.
-4. Place them in `res/drawable` with a `sticker_` name prefix. A Kotlin manifest in `stickers/` lists ID, display name (string resource, also used as the content description), resource, category, and search tags.
-5. **Categories and tags come from the Figma set**, not the placeholder chips (All / Shapes / Faces / Words). "All" is always the first chip; the remaining chips are the set's categories, defined when the stickers are exported (milestone 3).
-6. Search filters by display name and tags (case-insensitive, contains), combined with the selected category chip.
-7. The sticker repository exposes the list as a Flow. The editor depends only on the repository, so remote delivery can be added later without editor changes.
-8. Vector stickers are rasterized at the exact target size during export so they stay sharp at any scale.
+### Source and extraction
+
+- **Source:** `docs/design/stickers/status_stickers.svg`, the Figma export of the sticker sheet. It has two panels with the same 40 designs: the left panel is outlined ("die-cut", white outline plus soft shadow), the right panel is flat. **The outlined set ships:** it stays readable on any photo, and it is the panel whose stickers are grouped individually in the export.
+- **Extraction:** `tools/stickers/extract_stickers.py` (Python 3, standard library only) cuts out the 40 left-panel groups using each group's clip rect as the canvas and writes `app/src/main/res/drawable/sticker_<id>.xml` VectorDrawables. Names come from each sticker's position in the 10 × 4 grid, not the (scrambled) clip IDs. Re-run it after replacing the source SVG; never edit the generated drawables by hand.
+- The script supports only the SVG features this file uses (paths with fill, stroke, opacity, line caps/joins, miter limit, even-odd fill) and **fails on anything else**, so nothing is dropped silently. The set has no text, filters, gradients, masks or images, so no text outlining or WebP fallback is needed; vectors stay sharp at any export size.
+- Lint's `VectorPath` (long path data) warning is suppressed for `sticker_*.xml` only (`app/lint.xml`).
+
+### Catalog and repository (`stickers/`)
+
+- `StickerCatalog` lists the 40 stickers: stable `id` (matches the drawable name), display name (`sticker_name_*` string, also the content description), drawable, category, and lower-case search tags. **IDs are stored in session snapshots and must never change once shipped.**
+- **Categories:** Status, Reactions, Vibes. "All" is always the first chip, followed by these three (they replace the placeholder Shapes / Faces / Words chips).
+- `filterStickers` matches the query (case-insensitive, contains) against the display name and tags, combined with the selected category.
+- `StickerRepository` exposes the list as a Flow (`BundledStickerRepository`, bound with Hilt). The editor depends only on the repository, so remote delivery can be added later without editor changes.
+- Vector stickers are rasterized at the exact target size during export so they stay sharp at any scale.
 
 ---
 
@@ -524,7 +530,7 @@ Implement one milestone at a time. Each must build, include and pass its own tes
 |---|---|---|
 | 1 | Project skeleton and theme | Packages, DI (Hilt verified or manual fallback chosen), BuildConfig + App ID config, fixed dark theme with handoff tokens, Manrope, shared button components, type-safe navigation, and empty Permission/Capture/Editor/Caption/Share screens build and navigate |
 | 2 | Permission, camera, and sessions | Permission and Permission denied screens with full result handling; Capture screen per design (grid, flash cycle, switch camera); 16:9 capture at capped resolution into a session folder; normalization verified on real front and back cameras; error states; `SessionStore` with atomic, serialized, versioned snapshots, active pointer, fresh-launch vs. restore logic, and restore-failure handling |
-| 3 | Stickers | Figma stickers converted (outlined text, WebP fallbacks at 1024px), manifest with categories and tags, repository exposes them |
+| 3 | Stickers | Outlined Figma set extracted to 40 VectorDrawables by `tools/stickers/extract_stickers.py`; catalog with stable IDs, categories, and tags; repository and filtering |
 | 4 | Editor drawing | Editor layout and Draw tab per design; layer model, reducer, freehand drawing, swatches, brush slider, undo/redo with cap, edits persisted through `SessionStore` and surviving process death; Back → discard confirmation |
 | 5 | Editor stickers | Stickers tab with non-modal sheet, search, category chips, grid; place, select, move, pinch, rotate, ✕ remove, and resize/rotate handle |
 | 6 | Rendering and save | Image exporter (share and gallery targets, OOM fallback); gallery save on API 26–28 and 29+; `exportedRevision` disables duplicate saves (wired to a Save button on the Share screen) |
@@ -538,5 +544,4 @@ Implement one milestone at a time. Each must build, include and pass its own tes
 ## 22. Open questions
 
 - **Facebook App ID:** has a Meta app been registered? Registration can take time and blocks real testing of milestone 8, so start it early.
-- **Figma sticker assets:** the stickers need to be exported from the Figma file (or file access provided) before milestone 3. Their categories and tags are defined at that point.
 - Analytics events, if any.

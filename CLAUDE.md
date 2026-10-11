@@ -27,7 +27,7 @@ The decisions most likely to be gotten wrong without reading it:
 - Captures and editor sessions live in **`noBackupFilesDir`**, not the cache. A single `SessionStore` is the only code that reads/writes session files (atomic, serialized, versioned JSON snapshot); `SavedStateHandle` holds only the session ID.
 - The captured photo is **normalized once right after capture** (orientation + front-camera mirroring baked in), so no later code rotates or mirrors.
 - Share files in `cache/share/` are never deleted on discard/New photo/launch; only the age-based cleanup at app start removes them.
-- Stickers come only from the Figma file "Project Status Stickers" (https://www.figma.com/design/Ul8AkOtTiNQa6uHNumE0xI/Project-Status-Stickers), exported and bundled as resources. The stickers in the design handoff are placeholders; don't ship them or substitute other artwork.
+- Stickers come only from the Figma file "Project Status Stickers" (https://www.figma.com/design/Ul8AkOtTiNQa6uHNumE0xI/Project-Status-Stickers). Its export lives at `docs/design/stickers/status_stickers.svg`; the `sticker_*.xml` drawables are generated from it by `python3 tools/stickers/extract_stickers.py` (never edit them by hand), and sticker IDs are stable because session snapshots store them. The stickers in the design handoff are placeholders; don't ship them or substitute other artwork.
 - Work proceeds **one milestone at a time**; each milestone builds, ships its own tests, and is committed before the next.
 
 ## Project state

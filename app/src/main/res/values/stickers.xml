@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sticker_category_status">Status</string>
+    <string name="sticker_category_reactions">Reactions</string>
+    <string name="sticker_category_vibes">Vibes</string>
+
+    <!-- Sticker display names; also used as content descriptions. -->
+    <string name="sticker_name_done">Done</string>
+    <string name="sticker_name_finished">Finished</string>
+    <string name="sticker_name_almost_done">Almost done</string>
+    <string name="sticker_name_work_busy">Work busy</string>
+    <string name="sticker_name_flagged">Flagged</string>
+    <string name="sticker_name_high_alert">High alert</string>
+    <string name="sticker_name_lift_off">Lift off</string>
+    <string name="sticker_name_feedback">Feedback</string>
+    <string name="sticker_name_thanks">Thanks</string>
+    <string name="sticker_name_great_idea">Great idea</string>
+    <string name="sticker_name_good_idea">Good idea</string>
+    <string name="sticker_name_ok_thumbs">OK thumbs up</string>
+    <string name="sticker_name_thumbs_up">Thumbs up</string>
+    <string name="sticker_name_yes">Yes</string>
+    <string name="sticker_name_no">No</string>
+    <string name="sticker_name_nope">Nope</string>
+    <string name="sticker_name_thumbs_down">Thumbs down</string>
+    <string name="sticker_name_ok_hand">OK hand</string>
+    <string name="sticker_name_plus_one">Plus one</string>
+    <string name="sticker_name_yeah">Yeah</string>
+    <string name="sticker_name_peace">Peace</string>
+    <string name="sticker_name_wow_heart">Wow heart</string>
+    <string name="sticker_name_wow_burst">Wow burst</string>
+    <string name="sticker_name_omg">OMG</string>
+    <string name="sticker_name_lol">LOL</string>
+    <string name="sticker_name_meh">Meh</string>
+    <string name="sticker_name_hmm">Hmm</string>
+    <string name="sticker_name_love_it">Love it</string>
+    <string name="sticker_name_hate_it">Hate it</string>
+    <string name="sticker_name_hot_flame">Hot flame</string>
+    <string name="sticker_name_hot_skull">Hot skull</string>
+    <string name="sticker_name_fresh">Fresh</string>
+    <string name="sticker_name_chill">Chill</string>
+    <string name="sticker_name_party_time">Party time</string>
+    <string name="sticker_name_super_star">Super star</string>
+    <string name="sticker_name_happy_star">Happy star</string>
+    <string name="sticker_name_teary_star">Teary star</string>
+    <string name="sticker_name_sleepy">Sleepy</string>
+    <string name="sticker_name_dead">Dead</string>
+    <string name="sticker_name_awesome">Awesome</string>
+</resources>
