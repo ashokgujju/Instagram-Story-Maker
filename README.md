@@ -2,6 +2,8 @@
 
 Android app: take a photo, draw on it and add stickers, write a caption, and share it straight to Instagram Stories.
 
+<p align="center"><img src="docs/media/storymaker-demo.gif" width="300" alt="StoryMaker demo: capture, draw, stickers, caption, share to Instagram Stories"></p>
+
 - Architecture and decisions: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (source of truth; section 23 lists what was verified and the known gaps)
 - UI design handoff: [`docs/design/`](docs/design/)
 
